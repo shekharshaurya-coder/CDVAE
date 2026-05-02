@@ -1,0 +1,1041 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>CIF Visualizer · CDVAE</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet"/>
+<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+
+<style>
+  :root {
+    --bg: #0a0c10;
+    --bg2: #111318;
+    --bg3: #181c23;
+    --card: #151820;
+    --card2: #1c2030;
+    --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.12);
+    --text: #e8eaf0;
+    --text2: #8a9ab8;
+    --text3: #4a5568;
+    --accent: #4fc3f7;
+    --accent2: #81d4fa;
+    --green: #66bb6a;
+    --amber: #ffca28;
+    --red: #ef5350;
+    --purple: #ab47bc;
+    --teal: #26c6da;
+    --mono: 'Space Mono', monospace;
+    --sans: 'DM Sans', sans-serif;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.65;
+    min-height: 100vh;
+  }
+
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 1.5rem 2.5rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    background: var(--bg);
+    position: sticky;
+    top: 0;
+    z-index: 50;
+  }
+  .logo-icon {
+    width: 36px; height: 36px;
+    background: linear-gradient(135deg, #1565c0, #4fc3f7);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .logo-icon svg { width: 20px; height: 20px; }
+  .logo-text { font-family: var(--mono); font-size: 14px; color: var(--text); }
+  .logo-text span { color: var(--accent); }
+  .header-tag {
+    margin-left: auto;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text3);
+    border: 1px solid var(--border);
+    padding: 3px 8px;
+    border-radius: 4px;
+    letter-spacing: 0.08em;
+  }
+  .header-nav {
+    display: flex; gap: 0.5rem;
+  }
+  .nav-link {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text2);
+    text-decoration: none;
+    padding: 5px 12px;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    transition: all 0.15s;
+  }
+  .nav-link:hover { border-color: var(--accent); color: var(--accent); }
+  .nav-link.active { border-color: var(--accent); color: var(--accent); background: rgba(79,195,247,0.08); }
+
+  main { max-width: 1100px; margin: 0 auto; padding: 3rem 2rem 5rem; }
+
+  .hero { margin-bottom: 3rem; }
+  .hero h1 {
+    font-family: var(--mono);
+    font-size: clamp(22px, 3.5vw, 34px);
+    font-weight: 700;
+    color: var(--text);
+    letter-spacing: -0.02em;
+    margin-bottom: 0.5rem;
+  }
+  .hero h1 em { color: var(--accent); font-style: normal; }
+  .hero p { color: var(--text2); font-size: 15px; max-width: 520px; font-weight: 300; }
+
+  /* DROP ZONE */
+  .drop-zone {
+    border: 2px dashed var(--border2);
+    border-radius: 16px;
+    padding: 3.5rem 2rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.25s;
+    background: var(--card);
+    position: relative;
+    margin-bottom: 2rem;
+  }
+  .drop-zone:hover, .drop-zone.dragover {
+    border-color: var(--accent);
+    background: rgba(79,195,247,0.04);
+  }
+  .drop-zone input[type=file] {
+    position: absolute; inset: 0; opacity: 0; cursor: pointer;
+  }
+  .drop-icon {
+    font-size: 36px; margin-bottom: 1rem;
+    display: block;
+    color: var(--text3);
+  }
+  .drop-title {
+    font-family: var(--mono);
+    font-size: 15px;
+    color: var(--text2);
+    margin-bottom: 6px;
+  }
+  .drop-title strong { color: var(--accent); }
+  .drop-sub {
+    font-size: 12px;
+    color: var(--text3);
+    font-family: var(--mono);
+  }
+
+  /* SAMPLE FILES */
+  .sample-row {
+    display: flex; gap: 8px; flex-wrap: wrap;
+    margin-bottom: 2rem; align-items: center;
+  }
+  .sample-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text3);
+    margin-right: 4px;
+  }
+  .sample-btn {
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 4px 12px;
+    border: 1px solid var(--border2);
+    border-radius: 6px;
+    background: var(--bg3);
+    color: var(--text2);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .sample-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  .err-box {
+    background: rgba(239,83,80,0.08);
+    border: 1px solid rgba(239,83,80,0.25);
+    color: var(--red);
+    font-family: var(--mono);
+    font-size: 12px;
+    padding: 10px 14px;
+    border-radius: 8px;
+    margin-bottom: 1.5rem;
+    display: none;
+  }
+
+  /* RESULT PANEL */
+  #result-panel { display: none; }
+  #result-panel.visible { display: block; animation: fadeUp 0.4s ease; }
+  @keyframes fadeUp { from{opacity:0;transform:translateY(16px)} to{opacity:1;transform:translateY(0)} }
+
+  .result-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+    margin-bottom: 2rem;
+  }
+
+  .rc-header {
+    padding: 1.2rem 1.75rem;
+    border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 14px; flex-wrap: wrap;
+  }
+  .rc-formula {
+    font-family: var(--mono);
+    font-size: 22px;
+    font-weight: 700;
+    color: var(--text);
+  }
+  .rc-source {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text3);
+    border: 1px solid var(--border2);
+    padding: 3px 10px;
+    border-radius: 20px;
+  }
+  .btn-dl-cif {
+    margin-left: auto;
+    padding: 8px 18px;
+    background: rgba(79,195,247,0.1);
+    color: var(--accent);
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 700;
+    border: 1px solid rgba(79,195,247,0.3);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+    letter-spacing: 0.04em;
+  }
+  .btn-dl-cif:hover { background: rgba(79,195,247,0.18); }
+
+  .rc-body {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr;
+    gap: 0;
+  }
+  @media(max-width:760px) { .rc-body { grid-template-columns: 1fr; } }
+
+  .viewer-pane {
+    border-right: 1px solid var(--border);
+    position: relative;
+    background: #151820;
+  }
+  @media(max-width:760px) { .viewer-pane { border-right:none; border-bottom: 1px solid var(--border); } }
+
+  .viewer-plotly { width: 100%; height: 420px; }
+  .viewer-hint {
+    position: absolute; bottom: 8px; left: 12px;
+    font-size: 10px; font-family: var(--mono); color: var(--text3);
+    pointer-events: none; z-index: 2;
+  }
+
+  .info-pane { padding: 1.75rem; }
+  .info-pane h3 {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text3);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-bottom: 1rem;
+  }
+
+  .metrics-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 1.25rem; }
+  .metric-tile {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 12px;
+  }
+  .metric-tile .ml { font-size: 10px; color: var(--text3); font-family: var(--mono); margin-bottom: 4px; }
+  .metric-tile .mv { font-family: var(--mono); font-size: 16px; font-weight: 700; color: var(--text); }
+  .metric-tile.accent-blue .mv { color: var(--accent); }
+  .metric-tile.accent-green .mv { color: var(--green); }
+  .metric-tile.accent-purple .mv { color: var(--purple); }
+
+  .lattice-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 1.25rem;
+  }
+  .lat-chip {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text2);
+    text-align: center;
+  }
+  .lat-chip .lc-label { font-size: 9px; color: var(--text3); margin-bottom: 2px; }
+  .lat-chip .lc-val { color: var(--text); font-weight: 700; }
+
+  .elements-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 1.25rem; }
+  .el-badge {
+    padding: 4px 10px;
+    border-radius: 6px;
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 700;
+    border: 1px solid var(--border2);
+    color: var(--text2);
+    background: var(--bg3);
+  }
+
+  /* CIF TEXT PANEL */
+  .cif-panel {
+    border-top: 1px solid var(--border);
+    padding: 1.25rem 1.75rem;
+  }
+  .cif-panel h3 {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text3);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-bottom: 0.75rem;
+    display: flex; align-items: center; gap: 10px;
+  }
+  .toggle-btn {
+    font-family: var(--mono);
+    font-size: 10px;
+    padding: 2px 8px;
+    border: 1px solid var(--border2);
+    border-radius: 4px;
+    background: var(--bg3);
+    color: var(--text2);
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .toggle-btn:hover { color: var(--accent); border-color: var(--accent); }
+  pre.cif-text {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1rem;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text2);
+    max-height: 300px;
+    overflow: auto;
+    white-space: pre-wrap;
+    word-break: break-all;
+    display: none;
+    line-height: 1.7;
+  }
+  pre.cif-text.open { display: block; }
+
+  /* SUPERCELL CONTROLS */
+  .supercell-bar {
+    display: flex; gap: 8px; align-items: center; flex-wrap: wrap;
+    margin-bottom: 1rem;
+  }
+  .supercell-bar label {
+    font-family: var(--mono); font-size: 11px; color: var(--text2);
+  }
+  .sc-select {
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 12px;
+    padding: 5px 10px;
+    border-radius: 6px;
+    outline: none;
+  }
+  .sc-select:focus { border-color: var(--accent); }
+  .btn-apply {
+    padding: 6px 14px;
+    background: var(--accent);
+    color: #000;
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 700;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: opacity 0.2s;
+  }
+  .btn-apply:hover { opacity: 0.85; }
+
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo-icon">
+    <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5"/>
+      <line x1="12" y1="22" x2="12" y2="15.5"/>
+      <polyline points="22 8.5 12 15.5 2 8.5"/>
+    </svg>
+  </div>
+  <span class="logo-text">CD<span>VAE</span> · CIF Visualizer</span>
+  <nav class="header-nav">
+    <a href="index.html" class="nav-link">Generator</a>
+    <a href="cif_viewer.html" class="nav-link active">CIF Viewer</a>
+  </nav>
+  <div class="header-tag">CIF · Plotly 3D</div>
+</header>
+
+<main>
+  <div class="hero">
+    <h1>Visualize <em>crystal structures</em><br>from CIF files</h1>
+    <p>Upload any standard CIF file to render an interactive 3D structure with lattice, bonds, and full cell parameters.</p>
+  </div>
+
+  <!-- DROP ZONE -->
+  <div class="drop-zone" id="drop-zone">
+    <input type="file" id="file-input" accept=".cif" multiple/>
+    <span class="drop-icon">⬡</span>
+    <div class="drop-title">Drop a <strong>.cif</strong> file here, or click to browse</div>
+    <div class="drop-sub">Supports standard CIF format · multiple files supported</div>
+  </div>
+
+  <div class="sample-row">
+    <span class="sample-label">// try a sample:</span>
+    <button class="sample-btn" onclick="loadSample('NaCl')">NaCl</button>
+    <button class="sample-btn" onclick="loadSample('TiO2')">TiO₂ (Rutile)</button>
+    <button class="sample-btn" onclick="loadSample('Fe')">Fe (BCC)</button>
+    <button class="sample-btn" onclick="loadSample('SiC')">SiC</button>
+    <button class="sample-btn" onclick="loadSample('BaTiO3')">BaTiO₃</button>
+  </div>
+
+  <div class="err-box" id="err-box"></div>
+
+  <!-- RESULT -->
+  <div id="result-panel"></div>
+</main>
+
+<script>
+// ══════════════════════════════════════════════════════════════════════════════
+//  ELEMENT DATA
+// ══════════════════════════════════════════════════════════════════════════════
+const ELEMENT_COLORS = {
+  H:'#ef9a9a',He:'#b39ddb',Li:'#80cbc4',Be:'#a5d6a7',B:'#ffcc80',
+  C:'#78909c',N:'#64b5f6',O:'#ef5350',F:'#f48fb1',Na:'#80deea',
+  Mg:'#66bb6a',Al:'#b0bec5',Si:'#ffa726',P:'#ff7043',S:'#ffee58',
+  Cl:'#d4e157',K:'#ce93d8',Ca:'#a5d6a7',Sc:'#90caf9',Ti:'#90a4ae',
+  V:'#a5d6a7',Cr:'#ef9a9a',Mn:'#f48fb1',Fe:'#ef5350',Co:'#80cbc4',
+  Ni:'#a5d6a7',Cu:'#ff7043',Zn:'#4db6ac',Ga:'#ce93d8',Ge:'#bcaaa4',
+  As:'#80cbc4',Se:'#fff176',Br:'#ffb74d',Sr:'#c5e1a5',Y:'#b39ddb',
+  Zr:'#90a4ae',Nb:'#80cbc4',Mo:'#a5d6a7',Pd:'#bdbdbd',Ag:'#b0bec5',
+  Ba:'#c5e1a5',La:'#b39ddb',Hf:'#90a4ae',W:'#b0bec5',Pt:'#bdbdbd',
+  Au:'#ffd54f',Pb:'#78909c',Bi:'#80deea',
+};
+const COVALENT_RADII = {
+  H:0.31,He:0.28,Li:1.28,Be:0.96,B:0.84,C:0.73,N:0.71,O:0.66,F:0.57,
+  Na:1.66,Mg:1.41,Al:1.21,Si:1.11,P:1.07,S:1.05,Cl:1.02,
+  K:2.03,Ca:1.76,Sc:1.70,Ti:1.60,V:1.53,Cr:1.39,Mn:1.39,Fe:1.32,
+  Co:1.26,Ni:1.24,Cu:1.32,Zn:1.22,Ga:1.22,Ge:1.20,As:1.19,Se:1.20,
+  Br:1.20,Sr:1.95,Y:1.90,Zr:1.75,Nb:1.64,Mo:1.54,Pd:1.39,Ag:1.45,
+  Ba:2.15,La:2.07,Hf:1.75,W:1.54,Pt:1.36,Au:1.36,Pb:1.46,Bi:1.48,
+};
+function getElColor(s) { return ELEMENT_COLORS[s] || '#4fc3f7'; }
+function getCovR(s)     { return COVALENT_RADII[s] || 1.20; }
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  SAMPLE CIF DATA (embedded so the viewer works with no server)
+// ══════════════════════════════════════════════════════════════════════════════
+const SAMPLES = {
+  NaCl: `data_NaCl
+_cell_length_a                  5.6402
+_cell_length_b                  5.6402
+_cell_length_c                  5.6402
+_cell_angle_alpha               90.000
+_cell_angle_beta                90.000
+_cell_angle_gamma               90.000
+_symmetry_space_group_name_H-M  'F m -3 m'
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+Na Na 0.00000 0.00000 0.00000
+Na Na 0.00000 0.50000 0.50000
+Na Na 0.50000 0.00000 0.50000
+Na Na 0.50000 0.50000 0.00000
+Cl Cl 0.50000 0.50000 0.50000
+Cl Cl 0.50000 0.00000 0.00000
+Cl Cl 0.00000 0.50000 0.00000
+Cl Cl 0.00000 0.00000 0.50000`,
+
+  TiO2: `data_TiO2_rutile
+_cell_length_a                  4.5937
+_cell_length_b                  4.5937
+_cell_length_c                  2.9587
+_cell_angle_alpha               90.000
+_cell_angle_beta                90.000
+_cell_angle_gamma               90.000
+_symmetry_space_group_name_H-M  'P 42/m n m'
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+Ti Ti 0.00000 0.00000 0.00000
+Ti Ti 0.50000 0.50000 0.50000
+O  O  0.30480 0.30480 0.00000
+O  O  0.69520 0.69520 0.00000
+O  O  0.80480 0.19520 0.50000
+O  O  0.19520 0.80480 0.50000`,
+
+  Fe: `data_Fe_BCC
+_cell_length_a                  2.8664
+_cell_length_b                  2.8664
+_cell_length_c                  2.8664
+_cell_angle_alpha               90.000
+_cell_angle_beta                90.000
+_cell_angle_gamma               90.000
+_symmetry_space_group_name_H-M  'I m -3 m'
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+Fe Fe 0.00000 0.00000 0.00000
+Fe Fe 0.50000 0.50000 0.50000`,
+
+  SiC: `data_SiC_zinc_blende
+_cell_length_a                  4.3600
+_cell_length_b                  4.3600
+_cell_length_c                  4.3600
+_cell_angle_alpha               90.000
+_cell_angle_beta                90.000
+_cell_angle_gamma               90.000
+_symmetry_space_group_name_H-M  'F -4 3 m'
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+Si Si 0.00000 0.00000 0.00000
+Si Si 0.00000 0.50000 0.50000
+Si Si 0.50000 0.00000 0.50000
+Si Si 0.50000 0.50000 0.00000
+C  C  0.25000 0.25000 0.25000
+C  C  0.25000 0.75000 0.75000
+C  C  0.75000 0.25000 0.75000
+C  C  0.75000 0.75000 0.25000`,
+
+  BaTiO3: `data_BaTiO3
+_cell_length_a                  3.9921
+_cell_length_b                  3.9921
+_cell_length_c                  4.0355
+_cell_angle_alpha               90.000
+_cell_angle_beta                90.000
+_cell_angle_gamma               90.000
+_symmetry_space_group_name_H-M  'P 4 m m'
+loop_
+_atom_site_label
+_atom_site_type_symbol
+_atom_site_fract_x
+_atom_site_fract_y
+_atom_site_fract_z
+Ba Ba 0.00000 0.00000 0.00000
+Ti Ti 0.50000 0.50000 0.51200
+O1 O  0.50000 0.50000 0.02600
+O2 O  0.50000 0.00000 0.51300
+O3 O  0.00000 0.50000 0.51300`,
+};
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  CIF PARSER
+// ══════════════════════════════════════════════════════════════════════════════
+function parseCIF(text) {
+  const lines = text.split('\n');
+
+  function getValue(key) {
+    const re = new RegExp(`^\\s*${key}\\s+(.+)`, 'im');
+    const m = text.match(re);
+    if (!m) return null;
+    return m[1].trim().replace(/['"]/g, '');
+  }
+
+  const a     = parseFloat(getValue('_cell_length_a'))     || 5.0;
+  const b     = parseFloat(getValue('_cell_length_b'))     || 5.0;
+  const c     = parseFloat(getValue('_cell_length_c'))     || 5.0;
+  const alpha = parseFloat(getValue('_cell_angle_alpha'))  || 90;
+  const beta  = parseFloat(getValue('_cell_angle_beta'))   || 90;
+  const gamma = parseFloat(getValue('_cell_angle_gamma'))  || 90;
+
+  // Lattice vectors from a, b, c, alpha, beta, gamma
+  const toRad = d => d * Math.PI / 180;
+  const cosA = Math.cos(toRad(alpha));
+  const cosB = Math.cos(toRad(beta));
+  const cosG = Math.cos(toRad(gamma));
+  const sinG = Math.sin(toRad(gamma));
+  const v = Math.sqrt(1 - cosA*cosA - cosB*cosB - cosG*cosG + 2*cosA*cosB*cosG);
+
+  const lattice = [
+    [a, 0, 0],
+    [b * cosG, b * sinG, 0],
+    [c * cosB, c * (cosA - cosB*cosG)/sinG, c * v/sinG]
+  ];
+
+  // Parse atom_site loop
+  const loopIdx = text.toLowerCase().indexOf('loop_');
+  const atoms = [];
+
+  // Find all loop_ blocks and find the one with atom_site_fract_x
+  const loopBlocks = [];
+  let pos = 0;
+  while (true) {
+    const idx = text.toLowerCase().indexOf('loop_', pos);
+    if (idx === -1) break;
+    loopBlocks.push(idx);
+    pos = idx + 5;
+  }
+
+  for (const startIdx of loopBlocks) {
+    const blockText = text.slice(startIdx);
+    const blockLines = blockText.split('\n').slice(1); // skip 'loop_' line
+
+    // Collect headers
+    const headers = [];
+    let dataStart = 0;
+    for (let i = 0; i < blockLines.length; i++) {
+      const l = blockLines[i].trim();
+      if (l.startsWith('_')) {
+        headers.push(l.toLowerCase());
+        dataStart = i + 1;
+      } else if (l && !l.startsWith('#')) {
+        dataStart = i;
+        break;
+      }
+    }
+
+    if (!headers.some(h => h.includes('fract_x') || h.includes('fract_y'))) continue;
+
+    const iLabel  = headers.findIndex(h => h.includes('atom_site_label'));
+    const iSymbol = headers.findIndex(h => h.includes('atom_site_type_symbol'));
+    const iX      = headers.findIndex(h => h.includes('fract_x'));
+    const iY      = headers.findIndex(h => h.includes('fract_y'));
+    const iZ      = headers.findIndex(h => h.includes('fract_z'));
+
+    for (let i = dataStart; i < blockLines.length; i++) {
+      const l = blockLines[i].trim();
+      if (!l || l.startsWith('_') || l.startsWith('loop_') || l.startsWith('#')) break;
+      const parts = l.split(/\s+/);
+      if (parts.length < 3) continue;
+
+      // Parse symbol: prefer type_symbol, else extract from label
+      let sym = '';
+      if (iSymbol >= 0 && parts[iSymbol]) {
+        sym = parts[iSymbol];
+      } else if (iLabel >= 0 && parts[iLabel]) {
+        sym = parts[iLabel].replace(/[0-9_]/g, '').trim();
+      }
+      sym = sym.charAt(0).toUpperCase() + sym.slice(1).toLowerCase();
+
+      const fx = parseFloat(parts[iX]);
+      const fy = parseFloat(parts[iY]);
+      const fz = parseFloat(parts[iZ]);
+
+      if (isNaN(fx) || isNaN(fy) || isNaN(fz)) continue;
+
+      // Fractional → Cartesian
+      const x = fx*lattice[0][0] + fy*lattice[1][0] + fz*lattice[2][0];
+      const y = fx*lattice[0][1] + fy*lattice[1][1] + fz*lattice[2][1];
+      const z = fx*lattice[0][2] + fy*lattice[1][2] + fz*lattice[2][2];
+
+      atoms.push({ elem: sym, x, y, z, fx, fy, fz });
+    }
+    break; // found the atom site loop
+  }
+
+  // Formula
+  const cnt = {};
+  atoms.forEach(a => cnt[a.elem] = (cnt[a.elem]||0)+1);
+  const formula = Object.entries(cnt)
+    .sort(([a],[b]) => a.localeCompare(b))
+    .map(([e,n]) => e + (n>1?n:''))
+    .join('');
+
+  const spaceGroup = getValue('_symmetry_space_group_name_H-M') ||
+                     getValue('_space_group_name_H-M_alt') || '—';
+  const dataName   = (text.match(/^data_(\S+)/m)||[])[1] || 'structure';
+
+  return { lattice, atoms, a, b, c, alpha, beta, gamma, formula, spaceGroup, dataName, rawCif: text };
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  SUPERCELL EXPANSION
+//  Replicates atoms across (na × nb × nc) unit cells
+// ══════════════════════════════════════════════════════════════════════════════
+function expandSupercell(parsed, na, nb, nc) {
+  const { lattice, atoms } = parsed;
+  const expanded = [];
+  for (let ia = 0; ia < na; ia++) {
+    for (let ib = 0; ib < nb; ib++) {
+      for (let ic = 0; ic < nc; ic++) {
+        atoms.forEach(atom => {
+          expanded.push({
+            elem: atom.elem,
+            x: atom.x + ia*lattice[0][0] + ib*lattice[1][0] + ic*lattice[2][0],
+            y: atom.y + ia*lattice[0][1] + ib*lattice[1][1] + ic*lattice[2][1],
+            z: atom.z + ia*lattice[0][2] + ib*lattice[1][2] + ic*lattice[2][2],
+          });
+        });
+      }
+    }
+  }
+  return expanded;
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  BOND DETECTION
+// ══════════════════════════════════════════════════════════════════════════════
+function areBonded(a, b) {
+  const dx=a.x-b.x, dy=a.y-b.y, dz=a.z-b.z;
+  const d = Math.sqrt(dx*dx+dy*dy+dz*dz);
+  return d > 0.1 && d < (getCovR(a.elem)+getCovR(b.elem))*1.25;
+}
+
+function buildBonds(atoms) {
+  const xs=[], ys=[], zs=[];
+  for (let i=0; i<atoms.length; i++) {
+    for (let j=i+1; j<atoms.length; j++) {
+      if (areBonded(atoms[i], atoms[j])) {
+        xs.push(atoms[i].x, atoms[j].x, null);
+        ys.push(atoms[i].y, atoms[j].y, null);
+        zs.push(atoms[i].z, atoms[j].z, null);
+      }
+    }
+  }
+  return {xs, ys, zs};
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  CELL EDGES
+// ══════════════════════════════════════════════════════════════════════════════
+function buildCellEdges(lat, na, nb, nc) {
+  // For supercell, draw the outer box of the expanded cell
+  const A = [lat[0][0]*na, lat[0][1]*na, lat[0][2]*na];
+  const B = [lat[1][0]*nb, lat[1][1]*nb, lat[1][2]*nb];
+  const C = [lat[2][0]*nc, lat[2][1]*nc, lat[2][2]*nc];
+  const O = [0,0,0];
+  const AB  = [A[0]+B[0],A[1]+B[1],A[2]+B[2]];
+  const AC  = [A[0]+C[0],A[1]+C[1],A[2]+C[2]];
+  const BC  = [B[0]+C[0],B[1]+C[1],B[2]+C[2]];
+  const ABC = [A[0]+B[0]+C[0],A[1]+B[1]+C[1],A[2]+B[2]+C[2]];
+  const edges = [[O,A],[O,B],[O,C],[A,AB],[A,AC],[B,AB],[B,BC],[C,AC],[C,BC],[AB,ABC],[AC,ABC],[BC,ABC]];
+  const xs=[],ys=[],zs=[];
+  edges.forEach(([p,q]) => { xs.push(p[0],q[0],null); ys.push(p[1],q[1],null); zs.push(p[2],q[2],null); });
+  return {xs,ys,zs};
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  PLOTLY RENDER
+// ══════════════════════════════════════════════════════════════════════════════
+function renderPlotly(containerId, atoms, lattice, na, nb, nc) {
+  const el = document.getElementById(containerId);
+  if (!el) return;
+
+  // Atom traces per element
+  const byEl = {};
+  atoms.forEach(a => {
+    if (!byEl[a.elem]) byEl[a.elem] = {x:[],y:[],z:[]};
+    byEl[a.elem].x.push(a.x);
+    byEl[a.elem].y.push(a.y);
+    byEl[a.elem].z.push(a.z);
+  });
+  const atomTraces = Object.entries(byEl).map(([sym, d]) => ({
+    type:'scatter3d', mode:'markers', name:sym,
+    x:d.x, y:d.y, z:d.z,
+    hovertemplate:`<b>${sym}</b><br>x:%{x:.3f} y:%{y:.3f} z:%{z:.3f}<extra></extra>`,
+    marker:{
+      symbol:'circle',
+      size: Math.max(4, getCovR(sym)*5),
+      color: getElColor(sym),
+      opacity: 0.93,
+      line: {width:0.5, color:'rgba(255,255,255,0.25)'}
+    }
+  }));
+
+  const {xs:bx,ys:by,zs:bz} = buildBonds(atoms);
+  const bondTrace = {
+    type:'scatter3d', mode:'lines', name:'bonds',
+    x:bx, y:by, z:bz,
+    showlegend:false, hoverinfo:'none',
+    line:{color:'rgba(120,140,200,0.45)', width:2.5}
+  };
+
+  const {xs:cx,ys:cy,zs:cz} = buildCellEdges(lattice, na, nb, nc);
+  const cellTrace = {
+    type:'scatter3d', mode:'lines', name:'unit cell',
+    x:cx, y:cy, z:cz,
+    showlegend:false, hoverinfo:'none',
+    line:{color:'rgba(79,195,247,0.30)', width:1.5, dash:'dot'}
+  };
+
+  const layout = {
+    paper_bgcolor:'#151820', plot_bgcolor:'#151820',
+    margin:{l:0,r:0,t:0,b:0},
+    legend:{
+      font:{family:"'Space Mono', monospace", size:10, color:'#8a9ab8'},
+      bgcolor:'rgba(0,0,0,0)',
+      bordercolor:'rgba(255,255,255,0.07)', borderwidth:1,
+      x:0.02, y:0.98, xanchor:'left', yanchor:'top'
+    },
+    scene:{
+      bgcolor:'#151820',
+      xaxis:{showgrid:false,zeroline:false,showticklabels:false,showline:false,title:'',backgroundcolor:'#151820'},
+      yaxis:{showgrid:false,zeroline:false,showticklabels:false,showline:false,title:'',backgroundcolor:'#151820'},
+      zaxis:{showgrid:false,zeroline:false,showticklabels:false,showline:false,title:'',backgroundcolor:'#151820'},
+      camera:{eye:{x:1.7,y:1.7,z:1.2}}
+    }
+  };
+
+  Plotly.newPlot(el, [...atomTraces, bondTrace, cellTrace], layout,
+    {responsive:true, displayModeBar:false, scrollZoom:true});
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  JSON → CIF  (for re-download of parsed/sample structures)
+// ══════════════════════════════════════════════════════════════════════════════
+function structureToCIF(parsed) {
+  const {a, b, c, alpha, beta, gamma, spaceGroup, dataName, atoms} = parsed;
+  const lines = [
+    `data_${dataName}`,
+    `_cell_length_a                  ${a.toFixed(4)}`,
+    `_cell_length_b                  ${b.toFixed(4)}`,
+    `_cell_length_c                  ${c.toFixed(4)}`,
+    `_cell_angle_alpha               ${alpha.toFixed(3)}`,
+    `_cell_angle_beta                ${beta.toFixed(3)}`,
+    `_cell_angle_gamma               ${gamma.toFixed(3)}`,
+    `_symmetry_space_group_name_H-M  '${spaceGroup}'`,
+    `loop_`,
+    `_atom_site_label`,
+    `_atom_site_type_symbol`,
+    `_atom_site_fract_x`,
+    `_atom_site_fract_y`,
+    `_atom_site_fract_z`,
+  ];
+  const elCount = {};
+  atoms.forEach(at => {
+    elCount[at.elem] = (elCount[at.elem]||0)+1;
+    const idx = elCount[at.elem];
+    const fx  = at.fx !== undefined ? at.fx.toFixed(5) : '0.00000';
+    const fy  = at.fy !== undefined ? at.fy.toFixed(5) : '0.00000';
+    const fz  = at.fz !== undefined ? at.fz.toFixed(5) : '0.00000';
+    lines.push(`${at.elem}${idx}  ${at.elem}  ${fx}  ${fy}  ${fz}`);
+  });
+  return lines.join('\n');
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  RENDER RESULT CARD
+// ══════════════════════════════════════════════════════════════════════════════
+let _parsedStore = {};  // keyed by cardId → parsed
+
+function renderCard(parsed, cardId, filename) {
+  _parsedStore[cardId] = parsed;
+  const {formula, a, b, c, alpha, beta, gamma, spaceGroup, atoms} = parsed;
+  const uniqueEls = [...new Set(atoms.map(a=>a.elem))];
+  const nAtoms = atoms.length;
+
+  const panel = document.getElementById('result-panel');
+  const div = document.createElement('div');
+  div.innerHTML = `
+    <div class="result-card" id="card-${cardId}">
+      <div class="rc-header">
+        <div class="rc-formula">${formula}</div>
+        <div class="rc-source">${filename}</div>
+        <button class="btn-dl-cif" onclick="downloadCIF('${cardId}')">↓ Download CIF</button>
+      </div>
+
+      <div class="rc-body">
+        <div class="viewer-pane">
+          <div class="viewer-plotly" id="viewer-${cardId}"></div>
+          <div class="viewer-hint">drag · scroll · double-click to reset</div>
+        </div>
+        <div class="info-pane">
+          <div class="supercell-bar">
+            <label>Supercell</label>
+            <select class="sc-select" id="sc-na-${cardId}">
+              <option value="1" selected>1×</option>
+              <option value="2">2×</option>
+              <option value="3">3×</option>
+            </select>
+            <select class="sc-select" id="sc-nb-${cardId}">
+              <option value="1" selected>1×</option>
+              <option value="2">2×</option>
+              <option value="3">3×</option>
+            </select>
+            <select class="sc-select" id="sc-nc-${cardId}">
+              <option value="1" selected>1×</option>
+              <option value="2">2×</option>
+              <option value="3">3×</option>
+            </select>
+            <button class="btn-apply" onclick="applySupercell('${cardId}')">Apply</button>
+          </div>
+
+          <h3>// Cell parameters</h3>
+          <div class="lattice-grid">
+            <div class="lat-chip"><div class="lc-label">a</div><div class="lc-val">${a.toFixed(3)} Å</div></div>
+            <div class="lat-chip"><div class="lc-label">b</div><div class="lc-val">${b.toFixed(3)} Å</div></div>
+            <div class="lat-chip"><div class="lc-label">c</div><div class="lc-val">${c.toFixed(3)} Å</div></div>
+            <div class="lat-chip"><div class="lc-label">α</div><div class="lc-val">${alpha.toFixed(2)}°</div></div>
+            <div class="lat-chip"><div class="lc-label">β</div><div class="lc-val">${beta.toFixed(2)}°</div></div>
+            <div class="lat-chip"><div class="lc-label">γ</div><div class="lc-val">${gamma.toFixed(2)}°</div></div>
+          </div>
+
+          <h3>// Structure info</h3>
+          <div class="metrics-grid">
+            <div class="metric-tile accent-blue">
+              <div class="ml">Atoms / cell</div>
+              <div class="mv">${nAtoms}</div>
+            </div>
+            <div class="metric-tile accent-green">
+              <div class="ml">Elements</div>
+              <div class="mv">${uniqueEls.length}</div>
+            </div>
+            <div class="metric-tile">
+              <div class="ml">Volume</div>
+              <div class="mv" style="font-size:13px">${calcVolume(parsed).toFixed(2)} Å³</div>
+            </div>
+            <div class="metric-tile accent-purple">
+              <div class="ml">Space group</div>
+              <div class="mv" style="font-size:11px">${spaceGroup.slice(0,14)}</div>
+            </div>
+          </div>
+
+          <h3>// Elements</h3>
+          <div class="elements-row">
+            ${uniqueEls.map(el =>
+              `<div class="el-badge" style="border-color:${getElColor(el)}44;color:${getElColor(el)}">${el}</div>`
+            ).join('')}
+          </div>
+        </div>
+      </div>
+
+      <div class="cif-panel">
+        <h3>
+          // CIF source
+          <button class="toggle-btn" onclick="toggleCIF('cif-pre-${cardId}')">show / hide</button>
+        </h3>
+        <pre class="cif-text" id="cif-pre-${cardId}">${escapeHTML(structureToCIF(parsed))}</pre>
+      </div>
+    </div>
+  `;
+  panel.appendChild(div);
+  panel.classList.add('visible');
+
+  requestAnimationFrame(() => {
+    renderPlotly(`viewer-${cardId}`, parsed.atoms, parsed.lattice, 1, 1, 1);
+  });
+}
+
+function calcVolume(parsed) {
+  const {a,b,c,alpha,beta,gamma} = parsed;
+  const toRad = d => d*Math.PI/180;
+  const cosA=Math.cos(toRad(alpha)), cosB=Math.cos(toRad(beta)), cosG=Math.cos(toRad(gamma));
+  return a*b*c*Math.sqrt(1 - cosA*cosA - cosB*cosB - cosG*cosG + 2*cosA*cosB*cosG);
+}
+
+function applySupercell(cardId) {
+  const parsed = _parsedStore[cardId];
+  if (!parsed) return;
+  const na = parseInt(document.getElementById(`sc-na-${cardId}`).value);
+  const nb = parseInt(document.getElementById(`sc-nb-${cardId}`).value);
+  const nc = parseInt(document.getElementById(`sc-nc-${cardId}`).value);
+  if (na*nb*nc > 64) { setError('Supercell too large (max 64 unit cells)'); return; }
+  const expandedAtoms = expandSupercell(parsed, na, nb, nc);
+  renderPlotly(`viewer-${cardId}`, expandedAtoms, parsed.lattice, na, nb, nc);
+}
+
+function toggleCIF(preId) {
+  const pre = document.getElementById(preId);
+  if (pre) pre.classList.toggle('open');
+}
+
+function escapeHTML(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function downloadCIF(cardId) {
+  const parsed = _parsedStore[cardId];
+  if (!parsed) return;
+  const cif  = parsed.rawCif || structureToCIF(parsed);
+  const blob = new Blob([cif], {type:'text/plain'});
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url; a.download = `${parsed.formula || 'structure'}.cif`;
+  a.click(); URL.revokeObjectURL(url);
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  FILE HANDLING
+// ══════════════════════════════════════════════════════════════════════════════
+function setError(msg) {
+  const b = document.getElementById('err-box');
+  b.textContent = msg;
+  b.style.display = msg ? 'block' : 'none';
+}
+
+function processFile(text, filename) {
+  try {
+    const parsed = parseCIF(text);
+    if (parsed.atoms.length === 0) {
+      setError(`No atoms parsed from "${filename}". Check the CIF format.`);
+      return;
+    }
+    const cardId = 'c' + Date.now() + Math.random().toString(36).slice(2,6);
+    renderCard(parsed, cardId, filename);
+    setError('');
+  } catch(e) {
+    setError(`Parse error in "${filename}": ${e.message}`);
+  }
+}
+
+function loadSample(name) {
+  const text = SAMPLES[name];
+  if (!text) return;
+  processFile(text, `${name} (sample)`);
+}
+
+// File input
+document.getElementById('file-input').addEventListener('change', e => {
+  [...e.target.files].forEach(file => {
+    const reader = new FileReader();
+    reader.onload = ev => processFile(ev.target.result, file.name);
+    reader.readAsText(file);
+  });
+});
+
+// Drag & drop
+const dz = document.getElementById('drop-zone');
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('dragover'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('dragover'));
+dz.addEventListener('drop', e => {
+  e.preventDefault(); dz.classList.remove('dragover');
+  [...e.dataTransfer.files]
+    .filter(f => f.name.endsWith('.cif'))
+    .forEach(file => {
+      const reader = new FileReader();
+      reader.onload = ev => processFile(ev.target.result, file.name);
+      reader.readAsText(file);
+    });
+});
+</script>
+</body>
+</html>

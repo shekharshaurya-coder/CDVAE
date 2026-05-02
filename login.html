@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>CDVAE · Sign In</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet"/>
+<style>
+  :root {
+    --bg: #0a0c10;
+    --bg2: #111318;
+    --bg3: #181c23;
+    --card: #151820;
+    --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.12);
+    --border3: rgba(255,255,255,0.18);
+    --text: #e8eaf0;
+    --text2: #8a9ab8;
+    --text3: #4a5568;
+    --accent: #4fc3f7;
+    --green: #66bb6a;
+    --red: #ef5350;
+    --mono: 'Space Mono', monospace;
+    --sans: 'DM Sans', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 15px;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem;
+    /* Subtle grid background */
+    background-image:
+      linear-gradient(rgba(79,195,247,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(79,195,247,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+
+  /* ── Logo ────────────────────────────────────────────────── */
+  .logo-wrap {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 2.5rem;
+  }
+  .logo-icon {
+    width: 40px; height: 40px;
+    background: linear-gradient(135deg, #1565c0, #4fc3f7);
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    box-shadow: 0 0 24px rgba(79,195,247,0.2);
+  }
+  .logo-icon svg { width: 22px; height: 22px; }
+  .logo-text { font-family: var(--mono); font-size: 15px; color: var(--text); }
+  .logo-text span { color: var(--accent); }
+
+  /* ── Card ────────────────────────────────────────────────── */
+  .auth-card {
+    width: 100%;
+    max-width: 420px;
+    background: var(--card);
+    border: 1px solid var(--border2);
+    border-radius: 16px;
+    overflow: auto;
+    box-shadow: 0 8px 48px rgba(0,0,0,0.4), 0 0 0 1px rgba(79,195,247,0.05);
+  }
+
+  /* ── Tabs ────────────────────────────────────────────────── */
+  .tabs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    border-bottom: 1px solid var(--border);
+  }
+  .tab-btn {
+    padding: 14px;
+    background: transparent;
+    border: none;
+    font-family: var(--mono);
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--text3);
+    cursor: pointer;
+    transition: all 0.2s;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+  }
+  .tab-btn:hover { color: var(--text2); }
+  .tab-btn.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+    background: rgba(79,195,247,0.04);
+  }
+
+  /* ── Form body ───────────────────────────────────────────── */
+  .form-body { padding: 2rem; }
+
+  .form-section { display: none; }
+  .form-section.active { display: block; }
+
+  .form-title {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text3);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    margin-bottom: 1.5rem;
+  }
+
+  .field {
+    margin-bottom: 1.1rem;
+  }
+  .field label {
+    display: block;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text2);
+    letter-spacing: 0.06em;
+    margin-bottom: 7px;
+  }
+  .field input {
+    width: 100%;
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 14px;
+    padding: 11px 14px;
+    border-radius: 8px;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .field input:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(79,195,247,0.08);
+  }
+  .field input::placeholder { color: var(--text3); }
+
+  /* Password wrapper with show/hide toggle */
+  .pw-wrap { position: relative; }
+  .pw-wrap input { padding-right: 44px; }
+  .pw-toggle {
+    position: absolute;
+    right: 12px; top: 50%;
+    transform: translateY(-50%);
+    background: none; border: none;
+    color: var(--text3); cursor: pointer;
+    font-size: 14px; padding: 4px;
+    transition: color 0.15s;
+  }
+  .pw-toggle:hover { color: var(--text2); }
+
+  /* Submit button */
+  .btn-submit {
+    width: 100%;
+    padding: 12px;
+    background: var(--accent);
+    color: #000;
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    margin-top: 0.5rem;
+    transition: opacity 0.2s, transform 0.1s;
+  }
+  .btn-submit:hover { opacity: 0.88; }
+  .btn-submit:active { transform: scale(0.98); }
+  .btn-submit:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+  /* Status messages */
+  .msg {
+    margin-top: 1rem;
+    padding: 10px 14px;
+    border-radius: 7px;
+    font-family: var(--mono);
+    font-size: 12px;
+    display: none;
+    line-height: 1.5;
+  }
+  .msg.error {
+    background: rgba(239,83,80,0.08);
+    border: 1px solid rgba(239,83,80,0.28);
+    color: var(--red);
+    display: block;
+  }
+  .msg.success {
+    background: rgba(102,187,106,0.08);
+    border: 1px solid rgba(102,187,106,0.28);
+    color: var(--green);
+    display: block;
+  }
+  .msg.loading {
+    background: rgba(79,195,247,0.06);
+    border: 1px solid rgba(79,195,247,0.2);
+    color: var(--accent);
+    display: block;
+  }
+
+  /* Spinner inside button */
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .spinner {
+    display: inline-block;
+    width: 12px; height: 12px;
+    border: 2px solid rgba(0,0,0,0.3);
+    border-top-color: #000;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    vertical-align: middle;
+    margin-right: 6px;
+  }
+
+  /* ── Footer note ─────────────────────────────────────────── */
+  .footer-note {
+    margin-top: 2rem;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text3);
+    text-align: center;
+    letter-spacing: 0.06em;
+  }
+
+  /* ── Divider ─────────────────────────────────────────────── */
+  .divider {
+    display: flex; align-items: center; gap: 12px;
+    margin: 1.25rem 0;
+  }
+  .divider hr {
+    flex: 1; border: none;
+    border-top: 1px solid var(--border);
+  }
+  .divider span {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text3);
+    letter-spacing: 0.1em;
+    white-space: nowrap;
+  }
+
+  /* Password strength bar */
+  .strength-bar-wrap {
+    margin-top: 6px;
+    height: 3px;
+    background: var(--bg2);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .strength-bar {
+    height: 100%;
+    width: 0%;
+    border-radius: 2px;
+    transition: width 0.3s, background 0.3s;
+  }
+  .strength-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--text3);
+    margin-top: 4px;
+  }
+</style>
+</head>
+<body>
+
+<!-- Logo -->
+<div class="logo-wrap">
+  <div class="logo-icon">
+    <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"
+         stroke-linecap="round" stroke-linejoin="round">
+      <polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5"/>
+      <line x1="12" y1="22" x2="12" y2="15.5"/>
+      <polyline points="22 8.5 12 15.5 2 8.5"/>
+    </svg>
+  </div>
+  <span class="logo-text">CD<span>VAE</span> · Crystal Generator</span>
+</div>
+
+<!-- Auth card -->
+<div class="auth-card">
+
+  <!-- Tab switcher -->
+  <div class="tabs">
+    <button class="tab-btn active" id="tab-login"    onclick="switchTab('login')">Sign In</button>
+    <button class="tab-btn"        id="tab-register" onclick="switchTab('register')">Create Account</button>
+  </div>
+
+  <div class="form-body">
+
+    <!-- ── LOGIN FORM ─────────────────────────────────── -->
+    <div class="form-section active" id="section-login">
+      <div class="form-title">// Authentication</div>
+
+      <div class="field">
+        <label>Username</label>
+        <input type="text" id="login-username" placeholder="your_username"
+               autocomplete="username" autocapitalize="none" spellcheck="false"/>
+      </div>
+
+      <div class="field">
+        <label>Password</label>
+        <div class="pw-wrap">
+          <input type="password" id="login-password" placeholder="••••••••"
+                 autocomplete="current-password"
+                 onkeydown="if(event.key==='Enter') submitLogin()"/>
+          <button class="pw-toggle" onclick="togglePw('login-password', this)"
+                  title="Show/hide password">👁</button>
+        </div>
+      </div>
+
+      <button class="btn-submit" id="login-btn" onclick="submitLogin()">
+        Sign In →
+      </button>
+
+      <div class="msg" id="login-msg"></div>
+    </div>
+
+    <!-- ── REGISTER FORM ──────────────────────────────── -->
+    <div class="form-section" id="section-register">
+      <div class="form-title">// New Account</div>
+
+      <div class="field">
+        <label>Username <span style="color:var(--text3)">(3–32 chars)</span></label>
+        <input type="text" id="reg-username" placeholder="choose_a_username"
+               autocomplete="username" autocapitalize="none" spellcheck="false"
+               oninput="validateRegForm()"/>
+      </div>
+
+      <div class="field">
+        <label>Email <span style="color:var(--text3)">(optional)</span></label>
+        <input type="email" id="reg-email" placeholder="you@example.com"
+               autocomplete="email"/>
+      </div>
+
+      <div class="field">
+        <label>Password <span style="color:var(--text3)">(min 6 chars)</span></label>
+        <div class="pw-wrap">
+          <input type="password" id="reg-password" placeholder="choose a strong password"
+                 autocomplete="new-password"
+                 oninput="checkStrength(); validateRegForm()"/>
+          <button class="pw-toggle" onclick="togglePw('reg-password', this)"
+                  title="Show/hide password">👁</button>
+        </div>
+        <div class="strength-bar-wrap">
+          <div class="strength-bar" id="strength-bar"></div>
+        </div>
+        <div class="strength-label" id="strength-label"></div>
+      </div>
+
+      <div class="field">
+        <label>Confirm Password</label>
+        <div class="pw-wrap">
+          <input type="password" id="reg-confirm" placeholder="repeat password"
+                 autocomplete="new-password"
+                 oninput="validateRegForm()"
+                 onkeydown="if(event.key==='Enter') submitRegister()"/>
+          <button class="pw-toggle" onclick="togglePw('reg-confirm', this)"
+                  title="Show/hide password">👁</button>
+        </div>
+      </div>
+
+      <button class="btn-submit" id="register-btn" onclick="submitRegister()" disabled>
+        Create Account →
+      </button>
+
+      <div class="msg" id="register-msg"></div>
+    </div>
+
+  </div><!-- /form-body -->
+</div><!-- /auth-card -->
+
+<div class="footer-note">JWT · bcrypt · MongoDB Atlas · CDVAE v4</div>
+
+<script>
+const API = 'http://127.0.0.1:8000';
+
+// ── Tab switching ─────────────────────────────────────────────────────────────
+function switchTab(tab) {
+  document.getElementById('section-login').classList.toggle('active', tab === 'login');
+  document.getElementById('section-register').classList.toggle('active', tab === 'register');
+  document.getElementById('tab-login').classList.toggle('active', tab === 'login');
+  document.getElementById('tab-register').classList.toggle('active', tab === 'register');
+  clearMsgs();
+}
+
+function clearMsgs() {
+  ['login-msg','register-msg'].forEach(id => {
+    const el = document.getElementById(id);
+    el.className = 'msg'; el.textContent = '';
+  });
+}
+
+function showMsg(id, text, type) {
+  const el = document.getElementById(id);
+  el.textContent = text;
+  el.className   = `msg ${type}`;
+}
+
+// ── Password show/hide ────────────────────────────────────────────────────────
+function togglePw(inputId, btn) {
+  const inp = document.getElementById(inputId);
+  inp.type  = inp.type === 'password' ? 'text' : 'password';
+  btn.textContent = inp.type === 'password' ? '👁' : '🙈';
+}
+
+// ── Password strength meter ───────────────────────────────────────────────────
+function checkStrength() {
+  const pw  = document.getElementById('reg-password').value;
+  const bar = document.getElementById('strength-bar');
+  const lbl = document.getElementById('strength-label');
+
+  let score = 0;
+  if (pw.length >= 6)                    score++;
+  if (pw.length >= 10)                   score++;
+  if (/[A-Z]/.test(pw))                  score++;
+  if (/[0-9]/.test(pw))                  score++;
+  if (/[^A-Za-z0-9]/.test(pw))          score++;
+
+  const levels = [
+    { pct: '0%',   color: 'transparent',        label: '' },
+    { pct: '25%',  color: 'var(--red)',          label: 'Weak' },
+    { pct: '50%',  color: 'var(--amber,#ffca28)',label: 'Fair' },
+    { pct: '75%',  color: 'var(--accent)',        label: 'Good' },
+    { pct: '90%',  color: 'var(--green)',         label: 'Strong' },
+    { pct: '100%', color: 'var(--green)',         label: 'Very strong' },
+  ];
+
+  const lvl        = levels[Math.min(score, 5)];
+  bar.style.width  = lvl.pct;
+  bar.style.background = lvl.color;
+  lbl.textContent  = lvl.label;
+  lbl.style.color  = lvl.color;
+}
+
+// ── Register form validation ──────────────────────────────────────────────────
+function validateRegForm() {
+  const username = document.getElementById('reg-username').value.trim();
+  const password = document.getElementById('reg-password').value;
+  const confirm  = document.getElementById('reg-confirm').value;
+  const btn      = document.getElementById('register-btn');
+
+  const ok = (
+    username.length >= 3 &&
+    username.length <= 32 &&
+    /^[a-zA-Z0-9_]+$/.test(username) &&
+    password.length >= 6 &&
+    password === confirm
+  );
+  btn.disabled = !ok;
+}
+
+// ── Submit login ──────────────────────────────────────────────────────────────
+async function submitLogin() {
+  const username = document.getElementById('login-username').value.trim();
+  const password = document.getElementById('login-password').value;
+
+  if (!username || !password) {
+    showMsg('login-msg', 'Please enter your username and password.', 'error');
+    return;
+  }
+
+  const btn = document.getElementById('login-btn');
+  btn.disabled    = true;
+  btn.innerHTML   = '<span class="spinner"></span>Signing in…';
+  showMsg('login-msg', 'Authenticating…', 'loading');
+
+  try {
+    const resp = await fetch(`${API}/login`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ username, password }),
+    });
+
+    const data = await resp.json();
+
+    if (!resp.ok) {
+      // 401 → wrong credentials
+      throw new Error(data.detail || 'Invalid username or password');
+    }
+
+    // ── Store JWT and username ──────────────────────────────────────────────
+    localStorage.setItem('cdvae_token',    data.access_token);
+    localStorage.setItem('cdvae_username', data.username);
+
+    showMsg('login-msg', `✓ Welcome back, ${data.username}! Redirecting…`, 'success');
+
+    setTimeout(() => { window.location.href = 'index.html'; }, 800);
+
+  } catch (e) {
+    showMsg('login-msg', '✗ ' + e.message, 'error');
+    btn.disabled  = false;
+    btn.innerHTML = 'Sign In →';
+  }
+}
+
+// ── Submit register ───────────────────────────────────────────────────────────
+async function submitRegister() {
+  const username = document.getElementById('reg-username').value.trim();
+  const email    = document.getElementById('reg-email').value.trim() || null;
+  const password = document.getElementById('reg-password').value;
+  const confirm  = document.getElementById('reg-confirm').value;
+
+  if (password !== confirm) {
+    showMsg('register-msg', 'Passwords do not match.', 'error');
+    return;
+  }
+
+  const btn = document.getElementById('register-btn');
+  btn.disabled  = true;
+  btn.innerHTML = '<span class="spinner"></span>Creating account…';
+  showMsg('register-msg', 'Creating your account…', 'loading');
+
+  try {
+    const resp = await fetch(`${API}/register`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body:    JSON.stringify({ username, email, password }),
+    });
+
+    const data = await resp.json();
+
+    if (!resp.ok) {
+      // 409 → username taken
+      throw new Error(data.detail || 'Registration failed');
+    }
+
+    // ── Store JWT ─────────────────────────────────────────────────────────────
+    localStorage.setItem('cdvae_token',    data.access_token);
+    localStorage.setItem('cdvae_username', data.username);
+
+    showMsg('register-msg', `✓ Account created! Welcome, ${data.username}. Redirecting…`, 'success');
+
+    setTimeout(() => { window.location.href = 'index.html'; }, 900);
+
+  } catch (e) {
+    showMsg('register-msg', '✗ ' + e.message, 'error');
+    btn.disabled  = false;
+    btn.innerHTML = 'Create Account →';
+  }
+}
+
+// ── Auto-redirect if already logged in ───────────────────────────────────────
+(function checkExistingToken() {
+  const token = localStorage.getItem('cdvae_token');
+  if (!token) return;
+  // Quickly verify with /me — if valid, skip login
+  fetch(`${API}/me`, {
+    headers: { 'Authorization': `Bearer ${token}` }
+  }).then(r => {
+    if (r.ok) window.location.href = 'index.html';
+  }).catch(() => {/* token invalid or server down — stay on login page */});
+})();
+</script>
+</body>
+</html>

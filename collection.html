@@ -1,0 +1,1052 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>CDVAE · My Collection</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap" rel="stylesheet"/>
+<script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+<style>
+  :root {
+    --bg: #0a0c10;
+    --bg2: #111318;
+    --bg3: #181c23;
+    --card: #151820;
+    --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.12);
+    --text: #e8eaf0;
+    --text2: #8a9ab8;
+    --text3: #4a5568;
+    --accent: #4fc3f7;
+    --green: #66bb6a;
+    --amber: #ffca28;
+    --red: #ef5350;
+    --purple: #ab47bc;
+    --teal: #26c6da;
+    --mono: 'Space Mono', monospace;
+    --sans: 'DM Sans', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    font-size: 15px;
+    line-height: 1.65;
+    min-height: 100vh;
+  }
+
+  /* HEADER */
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 1.5rem 2.5rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    background: var(--bg);
+    position: sticky;
+    top: 0;
+    z-index: 50;
+  }
+  .logo-icon {
+    width: 36px; height: 36px;
+    background: linear-gradient(135deg, #1565c0, #4fc3f7);
+    border-radius: 8px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .logo-icon svg { width: 20px; height: 20px; }
+  .logo-text { font-family: var(--mono); font-size: 14px; color: var(--text); }
+  .logo-text span { color: var(--accent); }
+  .header-nav { display: flex; gap: 0.5rem; }
+  .nav-link {
+    font-family: var(--mono); font-size: 11px; color: var(--text2);
+    text-decoration: none; padding: 5px 12px;
+    border: 1px solid var(--border); border-radius: 6px; transition: all 0.15s;
+  }
+  .nav-link:hover, .nav-link.active {
+    border-color: var(--accent); color: var(--accent);
+    background: rgba(79,195,247,0.08);
+  }
+  .header-right {
+    display: flex; align-items: center; gap: 10px; margin-left: auto;
+  }
+  .header-user {
+    font-family: var(--mono); font-size: 11px; color: var(--text2);
+  }
+  .btn-logout {
+    font-family: var(--mono); font-size: 11px; color: var(--text3);
+    background: transparent; border: 1px solid var(--border);
+    padding: 4px 10px; border-radius: 6px; cursor: pointer;
+    transition: all 0.15s; letter-spacing: 0.06em;
+  }
+  .btn-logout:hover { color: var(--red); border-color: rgba(239,83,80,0.4); }
+  .header-tag {
+    font-family: var(--mono); font-size: 10px; color: var(--text3);
+    border: 1px solid var(--border); padding: 3px 8px; border-radius: 4px;
+    letter-spacing: 0.08em;
+  }
+
+  /* LAYOUT */
+  main { max-width: 1100px; margin: 0 auto; padding: 3rem 2rem 5rem; }
+
+  /* PAGE HERO */
+  .page-hero { margin-bottom: 2.5rem; }
+  .page-hero h1 {
+    font-family: var(--mono); font-size: clamp(22px, 3.5vw, 32px);
+    font-weight: 700; color: var(--text); letter-spacing: -0.02em;
+    margin-bottom: 0.4rem;
+  }
+  .page-hero h1 em { color: var(--accent); font-style: normal; }
+  .page-hero p { color: var(--text2); font-size: 14px; font-weight: 300; max-width: 480px; }
+
+  /* TOOLBAR */
+  .toolbar {
+    display: flex; align-items: center; gap: 12px;
+    margin-bottom: 1.75rem; flex-wrap: wrap;
+  }
+  .toolbar-left { display: flex; align-items: center; gap: 12px; flex: 1; }
+  .count-badge {
+    font-family: var(--mono); font-size: 11px; padding: 4px 10px;
+    border-radius: 20px; background: rgba(79,195,247,0.1);
+    color: var(--accent); border: 1px solid rgba(79,195,247,0.25);
+  }
+  .search-box {
+    background: var(--bg3); border: 1px solid var(--border2);
+    color: var(--text); font-family: var(--mono); font-size: 13px;
+    padding: 8px 14px; border-radius: 8px; outline: none;
+    transition: border-color 0.2s; width: 220px;
+  }
+  .search-box:focus { border-color: var(--accent); }
+  .search-box::placeholder { color: var(--text3); }
+  .sort-select {
+    background: var(--bg3); border: 1px solid var(--border2);
+    color: var(--text2); font-family: var(--mono); font-size: 12px;
+    padding: 8px 12px; border-radius: 8px; outline: none; cursor: pointer;
+  }
+  .sort-select option { background: var(--bg3); }
+
+  /* LOADING / EMPTY STATES */
+  .state-box {
+    padding: 4rem 2rem; text-align: center;
+    font-family: var(--mono); color: var(--text3); font-size: 13px;
+    display: none;
+  }
+  .state-box.visible { display: block; }
+  .state-box .state-icon { font-size: 36px; margin-bottom: 1rem; opacity: 0.4; }
+  .state-box p { margin-top: 0.5rem; }
+  .state-box a {
+    color: var(--accent); text-decoration: none;
+    border-bottom: 1px solid rgba(79,195,247,0.3);
+  }
+
+  /* GRID */
+  .collection-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 1.25rem;
+  }
+
+  /* COLLECTION CARD */
+  .col-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    overflow: hidden;
+    transition: border-color 0.2s, box-shadow 0.2s;
+  }
+  .col-card:hover {
+    border-color: var(--border2);
+    box-shadow: 0 4px 24px rgba(0,0,0,0.25);
+  }
+
+  .cc-header {
+    padding: 1rem 1.25rem 0.85rem;
+    display: flex; align-items: center; gap: 10px;
+    border-bottom: 1px solid var(--border);
+  }
+  .cc-formula {
+    font-family: var(--mono); font-size: 17px;
+    font-weight: 700; color: var(--text); flex: 1;
+    letter-spacing: 0.01em;
+  }
+  .cc-pill {
+    font-family: var(--mono); font-size: 10px; padding: 3px 9px;
+    border-radius: 20px; font-weight: 700; letter-spacing: 0.08em;
+  }
+  .pill-stable   { background: rgba(102,187,106,0.15); color: var(--green);  border: 1px solid rgba(102,187,106,0.3); }
+  .pill-likely   { background: rgba(38,198,218,0.12);  color: var(--teal);   border: 1px solid rgba(38,198,218,0.3); }
+  .pill-meta     { background: rgba(255,202,40,0.12);  color: var(--amber);  border: 1px solid rgba(255,202,40,0.25); }
+  .pill-unstable { background: rgba(239,83,80,0.12);   color: var(--red);    border: 1px solid rgba(239,83,80,0.25); }
+  .pill-invalid  { background: rgba(74,85,104,0.2);    color: var(--text3);  border: 1px solid rgba(74,85,104,0.3); }
+
+  .cc-elements {
+    display: flex; flex-wrap: wrap; gap: 5px;
+    padding: 0.75rem 1.25rem 0;
+  }
+  .cc-el {
+    font-family: var(--mono); font-size: 11px; font-weight: 700;
+    padding: 3px 8px; border-radius: 5px;
+    border: 1px solid var(--border2); color: var(--text2);
+    background: var(--bg3);
+  }
+
+  .cc-metrics {
+    display: grid; grid-template-columns: 1fr 1fr 1fr;
+    gap: 0; padding: 0.75rem 1.25rem;
+  }
+  .cc-metric { text-align: center; }
+  .cc-metric .cm-label {
+    font-family: var(--mono); font-size: 9px; color: var(--text3);
+    letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 2px;
+  }
+  .cc-metric .cm-val {
+    font-family: var(--mono); font-size: 13px; font-weight: 700; color: var(--text);
+  }
+  .cm-val.neg { color: var(--green); }
+  .cm-val.pos { color: var(--red); }
+  .cm-val.accent { color: var(--accent); }
+
+  .cc-meta {
+    padding: 0 1.25rem 0.75rem;
+    display: flex; align-items: center; gap: 10px;
+    font-family: var(--mono); font-size: 10px; color: var(--text3);
+  }
+  .cc-temp {
+    padding: 2px 7px; border-radius: 4px;
+    background: var(--bg3); border: 1px solid var(--border);
+    font-size: 10px; color: var(--text3);
+  }
+
+  /* Viewer pane */
+  .cc-viewer-wrap {
+    border-top: 1px solid var(--border);
+    background: #0f1219;
+    display: none;
+    position: relative;
+  }
+  .cc-viewer-wrap.open { display: block; }
+  .cc-viewer { width: 100%; height: 260px; }
+  .cc-viewer-hint {
+    position: absolute; bottom: 8px; left: 12px;
+    font-family: var(--mono); font-size: 10px; color: var(--text3);
+    pointer-events: none; z-index: 2;
+  }
+  .cc-viewer-loading {
+    position: absolute; inset: 0;
+    display: flex; align-items: center; justify-content: center;
+    background: #0f1219;
+    font-family: var(--mono); font-size: 11px; color: var(--text3);
+    z-index: 3;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .spin {
+    display: inline-block; width: 14px; height: 14px;
+    border: 2px solid var(--border2); border-top-color: var(--accent);
+    border-radius: 50%; animation: spin 0.7s linear infinite;
+    margin-right: 8px; vertical-align: middle;
+  }
+
+  /* ── Action row ───────────────────────────────────────────────── */
+  .cc-actions {
+    border-top: 1px solid var(--border);
+    padding: 0.75rem 1.25rem;
+    display: flex; gap: 6px; align-items: center; flex-wrap: wrap;
+  }
+
+  /* Visualize */
+  .btn-viz {
+    flex: 1; min-width: 90px;
+    padding: 8px 10px;
+    background: rgba(79,195,247,0.08);
+    color: var(--accent);
+    font-family: var(--mono); font-size: 11px; font-weight: 700;
+    border: 1px solid rgba(79,195,247,0.28);
+    border-radius: 7px; cursor: pointer; transition: all 0.2s;
+    letter-spacing: 0.04em;
+  }
+  .btn-viz:hover  { background: rgba(79,195,247,0.18); border-color: var(--accent); }
+  .btn-viz.active { background: rgba(79,195,247,0.15); border-color: var(--accent); }
+
+  /* Save to Atlas */
+  .btn-save {
+    padding: 8px 11px;
+    background: rgba(102,187,106,0.08);
+    color: var(--green);
+    font-family: var(--mono); font-size: 11px; font-weight: 700;
+    border: 1px solid rgba(102,187,106,0.28);
+    border-radius: 7px; cursor: pointer; transition: all 0.2s;
+    letter-spacing: 0.04em; white-space: nowrap;
+  }
+  .btn-save:hover    { background: rgba(102,187,106,0.18); border-color: var(--green); }
+  .btn-save.saved    { color: var(--text3); border-color: var(--border); background: transparent; cursor: default; }
+  .btn-save:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  /* Download CIF */
+  .btn-cif {
+    padding: 8px 11px;
+    background: rgba(255,202,40,0.08);
+    color: var(--amber);
+    font-family: var(--mono); font-size: 11px; font-weight: 700;
+    border: 1px solid rgba(255,202,40,0.28);
+    border-radius: 7px; cursor: pointer; transition: all 0.2s;
+    letter-spacing: 0.04em; white-space: nowrap;
+    text-decoration: none; display: inline-flex; align-items: center; gap: 5px;
+  }
+  .btn-cif:hover { background: rgba(255,202,40,0.18); border-color: var(--amber); }
+
+  /* Delete */
+  .btn-del {
+    padding: 8px 10px;
+    background: transparent; color: var(--text3);
+    font-family: var(--mono); font-size: 11px; font-weight: 700;
+    border: 1px solid var(--border);
+    border-radius: 7px; cursor: pointer; transition: all 0.2s;
+    letter-spacing: 0.04em;
+  }
+  .btn-del:hover { color: var(--red); border-color: rgba(239,83,80,0.4); background: rgba(239,83,80,0.05); }
+
+  /* Toast notification */
+  #toast {
+    position: fixed; bottom: 2rem; left: 50%; transform: translateX(-50%) translateY(20px);
+    background: var(--card); border: 1px solid var(--border2);
+    color: var(--text); font-family: var(--mono); font-size: 12px;
+    padding: 10px 20px; border-radius: 8px;
+    opacity: 0; transition: opacity 0.25s, transform 0.25s;
+    z-index: 200; pointer-events: none; white-space: nowrap;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.4);
+  }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  #toast.success { border-color: rgba(102,187,106,0.5); color: var(--green); }
+  #toast.error   { border-color: rgba(239,83,80,0.5);  color: var(--red); }
+
+  /* PAGINATION */
+  .pagination {
+    display: flex; align-items: center; justify-content: center;
+    gap: 8px; margin-top: 2.5rem;
+  }
+  .pg-btn {
+    font-family: var(--mono); font-size: 12px; padding: 7px 14px;
+    background: var(--card); border: 1px solid var(--border2);
+    color: var(--text2); border-radius: 7px; cursor: pointer;
+    transition: all 0.15s;
+  }
+  .pg-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .pg-btn:disabled { opacity: 0.3; cursor: not-allowed; }
+  .pg-info { font-family: var(--mono); font-size: 11px; color: var(--text3); }
+
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo-icon">
+    <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"
+         stroke-linecap="round" stroke-linejoin="round">
+      <polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5"/>
+      <line x1="12" y1="22" x2="12" y2="15.5"/>
+      <polyline points="22 8.5 12 15.5 2 8.5"/>
+    </svg>
+  </div>
+  <span class="logo-text">CD<span>VAE</span> · Crystal Generator</span>
+
+  <nav class="header-nav">
+    <a href="index.html"      class="nav-link">Generator</a>
+    <a href="collection.html" class="nav-link active">Collection</a>
+  </nav>
+
+  <div class="header-right">
+    <span class="header-user">⬡ <span id="header-username"></span></span>
+    <button class="btn-logout" onclick="logout()">Sign Out</button>
+    <div class="header-tag">v4 · Diffusion Model</div>
+  </div>
+</header>
+
+<main>
+  <div class="page-hero">
+    <h1>My <em>Saved Structures</em></h1>
+    <p>All crystal structures saved from the generator. Visualize, download as CIF, or re-save to Atlas.</p>
+  </div>
+
+  <div class="toolbar">
+    <div class="toolbar-left">
+      <span class="count-badge" id="count-badge">— structures</span>
+      <input class="search-box" id="search-box" type="text"
+             placeholder="Search formula, elements…"
+             oninput="filterCards()"/>
+      <select class="sort-select" id="sort-select" onchange="sortCards()">
+        <option value="date-desc">Newest first</option>
+        <option value="date-asc">Oldest first</option>
+        <option value="score-desc">Highest score</option>
+        <option value="score-asc">Lowest score</option>
+        <option value="formula-asc">Formula A→Z</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- States -->
+  <div class="state-box" id="state-loading">
+    <div class="state-icon"><span class="spin" style="width:28px;height:28px;border-width:3px;"></span></div>
+    <p>Loading your collection…</p>
+  </div>
+  <div class="state-box" id="state-empty">
+    <div class="state-icon">⬡</div>
+    <p>No saved structures yet.</p>
+    <p style="margin-top:0.5rem;">
+      Go to the <a href="index.html">Generator</a> and save any result to see it here.
+    </p>
+  </div>
+  <div class="state-box" id="state-no-results">
+    <div class="state-icon">◎</div>
+    <p>No structures match your search.</p>
+  </div>
+  <div class="state-box" id="state-error">
+    <div class="state-icon">✗</div>
+    <p id="error-text">Failed to load collection.</p>
+  </div>
+
+  <!-- Grid -->
+  <div class="collection-grid" id="collection-grid"></div>
+
+  <!-- Pagination -->
+  <div class="pagination" id="pagination" style="display:none;">
+    <button class="pg-btn" id="pg-prev" onclick="changePage(-1)">← Prev</button>
+    <span class="pg-info" id="pg-info"></span>
+    <button class="pg-btn" id="pg-next" onclick="changePage(+1)">Next →</button>
+  </div>
+</main>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<script>
+const API     = 'http://127.0.0.1:8000';
+const PAGE_SZ = 12;
+
+// ── Auth ──────────────────────────────────────────────────────────────────────
+function getToken()    { return localStorage.getItem('cdvae_token'); }
+function getUsername() { return localStorage.getItem('cdvae_username') || 'User'; }
+function authHeaders() {
+  return { 'Content-Type': 'application/json', 'Authorization': `Bearer ${getToken()}` };
+}
+function logout() {
+  localStorage.removeItem('cdvae_token');
+  localStorage.removeItem('cdvae_username');
+  window.location.href = 'login.html';
+}
+(function authGuard() {
+  if (!getToken()) { window.location.href = 'login.html'; return; }
+  document.getElementById('header-username').textContent = getUsername();
+})();
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+let _toastTimer;
+function showToast(msg, type = '') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className   = 'show ' + type;
+  clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => { el.className = ''; }, 2800);
+}
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let allStructures = [];
+let filteredList  = [];
+let currentPage   = 0;
+const vizRendered = {};
+
+// ── Load from API ─────────────────────────────────────────────────────────────
+async function loadCollection() {
+  showState('loading');
+  try {
+    const resp = await fetch(`${API}/structures?limit=200`, { headers: authHeaders() });
+    if (resp.status === 401) { logout(); return; }
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    const data = await resp.json();
+    if (data.error) throw new Error(data.error);
+
+    allStructures = Array.isArray(data) ? data : [];
+    filteredList  = [...allStructures];
+
+    if (allStructures.length === 0) { showState('empty'); return; }
+    showState(null);
+    renderPage();
+  } catch (e) {
+    showState('error', e.message);
+  }
+}
+
+function showState(name, msg = '') {
+  ['loading','empty','no-results','error'].forEach(s => {
+    document.getElementById(`state-${s}`).classList.toggle('visible', s === name);
+  });
+  if (name === 'error') document.getElementById('error-text').textContent = msg || 'Failed to load.';
+}
+
+// ── Scoring ───────────────────────────────────────────────────────────────────
+function realWorldScore(r) {
+  let score = 100;
+  const a = r.abc ? r.abc[0] : 5;
+  if (r.energy >= 0)         score -= 35;
+  else if (r.energy > -0.1)  score -= 15;
+  else if (r.energy > -0.5)  score -=  5;
+  if      (r.ehull > 0.200) score -= 40;
+  else if (r.ehull > 0.100) score -= 25;
+  else if (r.ehull > 0.050) score -= 12;
+  else if (r.ehull > 0.025) score -=  5;
+  if (a < 2.0 || a > 30)      score -= 30;
+  else if (a < 2.5 || a > 25) score -= 12;
+  if (r.band_gap < -0.05)    score -= 20;
+  else if (r.band_gap < 0)   score -=  8;
+  if (r.n_atoms < 2)         score -= 20;
+  else if (r.n_atoms > 50)   score -=  8;
+  return Math.max(0, Math.min(100, score));
+}
+
+function stabilityTier(score) {
+  if (score >= 85) return 'confirmed';
+  if (score >= 60) return 'likely';
+  if (score >= 35) return 'meta';
+  return 'unstable';
+}
+
+function stabilityPillClass(r) {
+  const t = stabilityTier(realWorldScore(r));
+  if (t === 'confirmed') return 'pill-stable';
+  if (t === 'likely')    return 'pill-likely';
+  if (t === 'meta')      return 'pill-meta';
+  return 'pill-unstable';
+}
+
+function stabilityLabel(r) {
+  const t = stabilityTier(realWorldScore(r));
+  if (t === 'confirmed') return 'STABLE';
+  if (t === 'likely')    return 'LIKELY';
+  if (t === 'meta')      return 'META';
+  return 'UNSTABLE';
+}
+
+// ── Formula helpers ───────────────────────────────────────────────────────────
+function buildFormula(symbols) {
+  const cnt = {};
+  (symbols || []).forEach(s => cnt[s] = (cnt[s]||0)+1);
+  return Object.entries(cnt)
+    .sort(([a],[b]) => a.localeCompare(b))
+    .map(([el,n]) => el + (n > 1 ? `<sub>${n}</sub>` : ''))
+    .join('');
+}
+
+function plainFormula(symbols) {
+  const cnt = {};
+  (symbols || []).forEach(s => cnt[s] = (cnt[s]||0)+1);
+  return Object.entries(cnt).sort(([a],[b])=>a.localeCompare(b))
+    .map(([el,n])=>el+(n>1?n:'')).join('');
+}
+
+// ── Filter + Sort ─────────────────────────────────────────────────────────────
+function filterCards() {
+  const q = document.getElementById('search-box').value.trim().toLowerCase();
+  filteredList = allStructures.filter(r => {
+    if (!q) return true;
+    const formula = plainFormula(r.symbols).toLowerCase();
+    const label   = (r.label || '').toLowerCase();
+    const elems   = (r.requested_elements || []).join(' ').toLowerCase();
+    return formula.includes(q) || label.includes(q) || elems.includes(q);
+  });
+  currentPage = 0;
+  sortCards(false);
+}
+
+function sortCards(doRender = true) {
+  const v = document.getElementById('sort-select').value;
+  filteredList.sort((a, b) => {
+    if (v === 'date-desc')   return new Date(b.created_at||0) - new Date(a.created_at||0);
+    if (v === 'date-asc')    return new Date(a.created_at||0) - new Date(b.created_at||0);
+    if (v === 'score-desc')  return realWorldScore(b) - realWorldScore(a);
+    if (v === 'score-asc')   return realWorldScore(a) - realWorldScore(b);
+    if (v === 'formula-asc') return plainFormula(a.symbols).localeCompare(plainFormula(b.symbols));
+    return 0;
+  });
+  if (doRender) renderPage();
+}
+
+// ── Render page ───────────────────────────────────────────────────────────────
+function renderPage() {
+  const grid = document.getElementById('collection-grid');
+  grid.innerHTML = '';
+
+  if (filteredList.length === 0) {
+    showState('no-results');
+    document.getElementById('pagination').style.display = 'none';
+    document.getElementById('count-badge').textContent = '0 structures';
+    return;
+  }
+
+  showState(null);
+  document.getElementById('count-badge').textContent =
+    `${filteredList.length} structure${filteredList.length !== 1 ? 's' : ''}`;
+
+  const totalPages = Math.ceil(filteredList.length / PAGE_SZ);
+  const start      = currentPage * PAGE_SZ;
+  const pageItems  = filteredList.slice(start, start + PAGE_SZ);
+
+  pageItems.forEach((r, localIdx) => {
+    const globalIdx = start + localIdx;
+    const score     = realWorldScore(r);
+    const formula   = buildFormula(r.symbols);
+    const plain     = plainFormula(r.symbols);
+    const uniqueEls = [...new Set(r.symbols || [])];
+    const pillCls   = stabilityPillClass(r);
+    const pillLbl   = stabilityLabel(r);
+
+    // Date — prefer created_at, fall back to saved_at
+    const rawDate = r.created_at || r.saved_at;
+    const dateStr = rawDate
+      ? new Date(rawDate).toLocaleDateString('en-GB', {day:'numeric',month:'short',year:'numeric'})
+      : '—';
+    const timeStr = rawDate
+      ? new Date(rawDate).toLocaleTimeString('en-GB', {hour:'2-digit',minute:'2-digit'})
+      : '';
+
+    const tempLabel = r.temperature === 0.5 ? '0.5 · focused'
+                    : r.temperature === 1.0 ? '1.0 · diverse'
+                    : '0.8 · balanced';
+
+    const energyClass = r.energy < 0 ? 'neg' : 'pos';
+    const ehullClass  = r.ehull < 0.025 ? 'neg' : r.ehull < 0.1 ? 'accent' : 'pos';
+
+    // IDs for this card's elements
+    const cardId  = `col-card-${globalIdx}`;
+    const viewId  = `col-viewer-${globalIdx}`;
+    const wrapId  = `col-wrap-${globalIdx}`;
+    const loadId  = `col-loading-${globalIdx}`;
+    const btnId   = `col-vizBtn-${globalIdx}`;
+    const saveId  = `col-saveBtn-${globalIdx}`;
+
+    // Structure ID from MongoDB (_id) if available
+    const structId = r._id || r.id || '';
+
+    const card = document.createElement('div');
+    card.className   = 'col-card';
+    card.id          = cardId;
+    card.dataset.idx = globalIdx;
+
+    card.innerHTML = `
+      <div class="cc-header">
+        <div class="cc-formula">${formula}</div>
+        <div class="cc-pill ${pillCls}">${pillLbl}</div>
+      </div>
+
+      <div class="cc-elements">
+        ${uniqueEls.map(el => `<span class="cc-el">${el}</span>`).join('')}
+      </div>
+
+      <div class="cc-metrics">
+        <div class="cc-metric">
+          <div class="cm-label">Formation E</div>
+          <div class="cm-val ${energyClass}">${(r.energy||0).toFixed(3)}</div>
+        </div>
+        <div class="cc-metric">
+          <div class="cm-label">Hull meV/at</div>
+          <div class="cm-val ${ehullClass}">${((r.ehull||0)*1000).toFixed(1)}</div>
+        </div>
+        <div class="cc-metric">
+          <div class="cm-label">Score</div>
+          <div class="cm-val accent">${score}/100</div>
+        </div>
+      </div>
+
+      <div class="cc-meta">
+        <span>${dateStr}${timeStr ? ' · ' + timeStr : ''}</span>
+        <span>·</span>
+        <span>${r.n_atoms} atoms</span>
+        <span>·</span>
+        <span class="cc-temp">${tempLabel}</span>
+      </div>
+
+      <!-- Viewer -->
+      <div class="cc-viewer-wrap" id="${wrapId}">
+        <div class="cc-viewer-loading" id="${loadId}">
+          <span class="spin"></span> Rendering…
+        </div>
+        <div class="cc-viewer" id="${viewId}"></div>
+        <div class="cc-viewer-hint">drag · scroll · double-click to reset</div>
+      </div>
+
+      <div class="cc-actions">
+        <button class="btn-viz" id="${btnId}"
+                onclick="toggleVisualize(${globalIdx}, '${viewId}', '${wrapId}', '${loadId}', '${btnId}')">
+          ◎ Visualize
+        </button>
+
+        <button class="btn-save" id="${saveId}"
+                onclick="saveToAtlas(${globalIdx}, '${saveId}', '${plain}')">
+          ↑ Save
+        </button>
+
+        <button class="btn-cif"
+                onclick="downloadCIF(${globalIdx}, '${plain}')">
+          ↓ CIF
+        </button>
+
+        <button class="btn-del"
+                onclick="deleteStructure('${plain}', '${cardId}', '${structId}')">
+          ✕
+        </button>
+      </div>
+    `;
+
+    grid.appendChild(card);
+
+    // If already saved to Atlas, mark the button
+    if (r._id) {
+      const btn = document.getElementById(saveId);
+      if (btn) { btn.textContent = '✓ Saved'; btn.classList.add('saved'); btn.disabled = true; }
+    }
+  });
+
+  // Pagination
+  const pgEl = document.getElementById('pagination');
+  pgEl.style.display = totalPages > 1 ? 'flex' : 'none';
+  document.getElementById('pg-info').textContent = `Page ${currentPage+1} of ${totalPages}`;
+  document.getElementById('pg-prev').disabled = currentPage === 0;
+  document.getElementById('pg-next').disabled = currentPage >= totalPages - 1;
+}
+
+function changePage(delta) {
+  currentPage += delta;
+  renderPage();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  SAVE TO MONGO ATLAS
+// ══════════════════════════════════════════════════════════════════════════════
+async function saveToAtlas(globalIdx, btnId, plainLabel) {
+  const btn = document.getElementById(btnId);
+  if (!btn || btn.disabled) return;
+
+  btn.disabled    = true;
+  btn.textContent = '…';
+
+  const r = filteredList[globalIdx];
+
+  try {
+    const resp = await fetch(`${API}/save`, {
+      method:  'POST',
+      headers: authHeaders(),
+      body:    JSON.stringify({
+        structure:r,
+        elements:r.requested_elements || [],
+        temperature: r.temperature || 0.8,
+        label: plainLabel,
+      }),
+    });
+
+    if (resp.status === 401) { logout(); return; }
+    const data = await resp.json();
+    if (!data.ok) throw new Error( data.error || 'Save failed');
+
+    // Persist the returned _id back into our local array so CIF download works
+    const saved = filteredList[globalIdx];
+    saved._id = data._id || data.id || saved._id;
+    allStructures.forEach((s, i) => {
+      if (plainFormula(s.symbols) === plainLabel) allStructures[i]._id = saved._id;
+    });
+
+    btn.textContent = '✓ Saved';
+    btn.classList.add('saved');
+    showToast(`${plainLabel} saved to Atlas`, 'success');
+  } catch (e) {
+    btn.disabled    = false;
+    btn.textContent = '↑ Save';
+    showToast('Save failed: ' + e.message, 'error');
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  DOWNLOAD AS CIF
+//  Two paths:
+//   1. If structure has a MongoDB _id → hit the server's /structures/:id/cif
+//   2. Otherwise → build the CIF client-side from stored data
+// ══════════════════════════════════════════════════════════════════════════════
+async function downloadCIF(globalIdx, plainLabel) {
+  const r = filteredList[globalIdx];
+
+  // ── Path 1: server-side CIF via MongoDB id ────────────────────────────────
+  if (r._id) {
+    try {
+      const resp = await fetch(`${API}/structures/${r._id}/cif`, {
+        headers: { 'Authorization': `Bearer ${getToken()}` }
+      });
+      if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+      const blob = await resp.blob();
+      triggerDownload(blob, `${plainLabel}_cdvae.cif`);
+      showToast(`Downloaded ${plainLabel}.cif`, 'success');
+    } catch (e) {
+      // fall through to client-side generation
+      clientCIF(r, plainLabel);
+    }
+    return;
+  }
+
+  // ── Path 2: client-side CIF generation ───────────────────────────────────
+  clientCIF(r, plainLabel);
+}
+
+function clientCIF(r, plainLabel) {
+  try {
+    const cif = buildCIF(r);
+    const blob = new Blob([cif], { type: 'chemical/x-cif' });
+    triggerDownload(blob, `${plainLabel}_cdvae.cif`);
+    showToast(`Downloaded ${plainLabel}.cif`, 'success');
+  } catch (e) {
+    showToast('CIF generation failed: ' + e.message, 'error');
+  }
+}
+
+function triggerDownload(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a   = document.createElement('a');
+  a.href    = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+}
+
+// ── CIF builder (uses frac_coords if available, else cartesian fallback) ──────
+function buildCIF(r) {
+  const symbols = r.symbols || [];
+  const lattice = r.lattice || [[5,0,0],[0,5,0],[0,0,5]];
+  const frac    = r.frac_coords || [];
+  const cart    = r.cartesian   || [];
+
+  const [A, B, C] = lattice;
+
+  function vlen(v) { return Math.sqrt(v[0]**2 + v[1]**2 + v[2]**2); }
+  function dot(u, v) { return u[0]*v[0] + u[1]*v[1] + u[2]*v[2]; }
+  function clamp(x) { return Math.max(-1, Math.min(1, x)); }
+
+  const a = vlen(A), b = vlen(B), c = vlen(C);
+  const alpha = (180 / Math.PI) * Math.acos(clamp(dot(B,C) / (b*c)));
+  const beta  = (180 / Math.PI) * Math.acos(clamp(dot(A,C) / (a*c)));
+  const gamma = (180 / Math.PI) * Math.acos(clamp(dot(A,B) / (a*b)));
+
+  // Convert cartesian → fractional if frac_coords not stored
+  let coords = frac;
+  if (!coords.length && cart.length) {
+    // Simple inversion for orthorhombic; for full triclinic a matrix inverse is needed
+    coords = cart.map(pos => [pos[0]/a, pos[1]/b, pos[2]/c]);
+  }
+
+  const lines = [
+    'data_cdvae_generated',
+    `_cell_length_a                  ${a.toFixed(6)}`,
+    `_cell_length_b                  ${b.toFixed(6)}`,
+    `_cell_length_c                  ${c.toFixed(6)}`,
+    `_cell_angle_alpha               ${alpha.toFixed(4)}`,
+    `_cell_angle_beta                ${beta.toFixed(4)}`,
+    `_cell_angle_gamma               ${gamma.toFixed(4)}`,
+    `_cell_volume                    ${(r.volume || 0).toFixed(4)}`,
+    `_symmetry_space_group_name_H-M  'P 1'`,
+    `_symmetry_Int_Tables_number      1`,
+    `_chemical_formula_sum           '${plainFormula(symbols)}'`,
+    `_cdvae_formation_energy         ${(r.energy || 0).toFixed(6)}`,
+    `_cdvae_energy_above_hull        ${(r.ehull || 0).toFixed(6)}`,
+    `_cdvae_stability_score          ${realWorldScore(r)}`,
+    '',
+    'loop_',
+    '  _atom_site_label',
+    '  _atom_site_type_symbol',
+    '  _atom_site_fract_x',
+    '  _atom_site_fract_y',
+    '  _atom_site_fract_z',
+  ];
+
+  const elCount = {};
+  symbols.forEach((sym, i) => {
+    elCount[sym] = (elCount[sym] || 0) + 1;
+    const label = `${sym}${elCount[sym]}`;
+    const fc = coords[i] || [0, 0, 0];
+    lines.push(`  ${label.padEnd(8)} ${sym.padEnd(4)} ${fc[0].toFixed(6).padStart(10)} ${fc[1].toFixed(6).padStart(10)} ${fc[2].toFixed(6).padStart(10)}`);
+  });
+
+  return lines.join('\n') + '\n';
+}
+
+// ── Delete structure ──────────────────────────────────────────────────────────
+async function deleteStructure(label, cardId, structId) {
+  if (!confirm(`Delete "${label}"? This cannot be undone.`)) return;
+  try {
+    // Delete by _id if available, else by formula label
+    const endpoint = structId
+      ? `${API}/structures/${encodeURIComponent(structId)}`
+      : `${API}/structures/${encodeURIComponent(label)}`;
+
+    const resp = await fetch(endpoint, { method: 'DELETE', headers: authHeaders() });
+    if (resp.status === 401) { logout(); return; }
+    const data = await resp.json();
+    if (!data.ok) throw new Error(data.error || 'Delete failed');
+
+    allStructures = allStructures.filter(r => plainFormula(r.symbols) !== label);
+    filterCards();
+
+    const card = document.getElementById(cardId);
+    if (card) {
+      card.style.transition = 'opacity 0.3s, transform 0.3s';
+      card.style.opacity    = '0';
+      card.style.transform  = 'scale(0.95)';
+      setTimeout(() => card.remove(), 300);
+    }
+    showToast(`${label} deleted`, '');
+  } catch (e) {
+    showToast('Delete error: ' + e.message, 'error');
+  }
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  VISUALIZE
+// ══════════════════════════════════════════════════════════════════════════════
+function toggleVisualize(globalIdx, viewId, wrapId, loadId, btnId) {
+  const wrap  = document.getElementById(wrapId);
+  const btn   = document.getElementById(btnId);
+  const isOpen = wrap.classList.contains('open');
+
+  if (isOpen) {
+    wrap.classList.remove('open');
+    btn.classList.remove('active');
+    btn.textContent = '◎ Visualize';
+    return;
+  }
+
+  wrap.classList.add('open');
+  btn.classList.add('active');
+  btn.textContent = '▲ Hide';
+
+  if (vizRendered[globalIdx]) return;
+  vizRendered[globalIdx] = true;
+
+  const r = filteredList[globalIdx];
+  requestAnimationFrame(() => {
+    document.getElementById(loadId).style.display = 'none';
+    renderPlotly(viewId, r);
+  });
+}
+
+// ══════════════════════════════════════════════════════════════════════════════
+//  PLOTLY 3D RENDERER
+// ══════════════════════════════════════════════════════════════════════════════
+const ELEMENT_COLORS = {
+  H:'#ef9a9a',He:'#b39ddb',Li:'#80cbc4',Be:'#a5d6a7',B:'#ffcc80',
+  C:'#78909c',N:'#64b5f6',O:'#ef5350',F:'#f48fb1',Na:'#80deea',
+  Mg:'#66bb6a',Al:'#b0bec5',Si:'#ffa726',P:'#ff7043',S:'#ffee58',
+  Cl:'#d4e157',Ca:'#a5d6a7',Ti:'#90a4ae',Fe:'#ef5350',Cu:'#ff7043',
+  Zn:'#4db6ac',Ag:'#b0bec5',Au:'#ffd54f',Pt:'#b0bec5',Pb:'#78909c'
+};
+const COVALENT_RADII = {
+  H:0.31,He:0.28,Li:1.28,Be:0.96,B:0.84,C:0.73,N:0.71,O:0.66,F:0.57,
+  Na:1.66,Mg:1.41,Al:1.21,Si:1.11,P:1.07,S:1.05,Cl:1.02,K:2.03,Ca:1.76,
+  Sc:1.70,Ti:1.60,V:1.53,Cr:1.39,Mn:1.39,Fe:1.32,Co:1.26,Ni:1.24,
+  Cu:1.32,Zn:1.22,Ga:1.22,Ge:1.20,As:1.19,Se:1.20,Br:1.20,Sr:1.95,
+  Y:1.90,Zr:1.75,Nb:1.64,Mo:1.54,Pd:1.39,Ag:1.45,Ba:2.15,La:2.07,
+  Hf:1.75,W:1.54,Pt:1.36,Au:1.36,Pb:1.46,Bi:1.48,
+};
+function getElColor(s)  { return ELEMENT_COLORS[s] || '#4fc3f7'; }
+function getCR(s)       { return COVALENT_RADII[s] || 1.20; }
+function areBonded(a,b) {
+  const dx=a.x-b.x,dy=a.y-b.y,dz=a.z-b.z;
+  return Math.sqrt(dx*dx+dy*dy+dz*dz) < (getCR(a.elem)+getCR(b.elem))*1.25;
+}
+function largestCluster(atoms) {
+  const n=atoms.length, p=atoms.map((_,i)=>i);
+  function find(x){ while(p[x]!==x){p[x]=p[p[x]];x=p[x];}return x; }
+  function union(x,y){ const px=find(x),py=find(y); if(px!==py)p[px]=py; }
+  let bonds=0;
+  for(let i=0;i<n;i++) for(let j=i+1;j<n;j++) if(areBonded(atoms[i],atoms[j])){ union(i,j);bonds++; }
+  if(bonds===0) return atoms;
+  const sz={};
+  for(let i=0;i<n;i++){ const r=find(i); sz[r]=(sz[r]||0)+1; }
+  const best=Object.entries(sz).reduce((a,b)=>b[1]>a[1]?b:a)[0];
+  return atoms.filter((_,i)=>find(i)==+best);
+}
+
+function renderPlotly(viewId, r) {
+  const el = document.getElementById(viewId);
+  if (!el) return;
+
+  const atoms = (r.cartesian || []).map((pos,i) => ({
+    x:pos[0], y:pos[1], z:pos[2], elem:(r.symbols||[])[i]||'X'
+  }));
+  const cluster = largestCluster(atoms);
+  const byEl = {};
+  cluster.forEach(a => {
+    if (!byEl[a.elem]) byEl[a.elem]={x:[],y:[],z:[]};
+    byEl[a.elem].x.push(a.x); byEl[a.elem].y.push(a.y); byEl[a.elem].z.push(a.z);
+  });
+  const atomTraces = Object.entries(byEl).map(([sym,d])=>({
+    type:'scatter3d',mode:'markers',name:sym,
+    x:d.x,y:d.y,z:d.z,
+    hovertemplate:`<b>${sym}</b><br>x:%{x:.2f} y:%{y:.2f} z:%{z:.2f}<extra></extra>`,
+    marker:{symbol:'circle',size:Math.max(4,getCR(sym)*5),color:getElColor(sym),opacity:0.93,
+            line:{width:0.5,color:'rgba(255,255,255,0.2)'}}
+  }));
+
+  const bx=[],by=[],bz=[];
+  for(let i=0;i<cluster.length;i++) for(let j=i+1;j<cluster.length;j++) {
+    if(areBonded(cluster[i],cluster[j])){
+      bx.push(cluster[i].x,cluster[j].x,null);
+      by.push(cluster[i].y,cluster[j].y,null);
+      bz.push(cluster[i].z,cluster[j].z,null);
+    }
+  }
+  const bondTrace = {
+    type:'scatter3d',mode:'lines',name:'bonds',
+    x:bx,y:by,z:bz,showlegend:false,hoverinfo:'none',
+    line:{color:'rgba(120,140,200,0.45)',width:2}
+  };
+
+  const lat=r.lattice||[[5,0,0],[0,5,0],[0,0,5]];
+  const O=[0,0,0],A=lat[0],B=lat[1],Cv=lat[2];
+  const AB=[A[0]+B[0],A[1]+B[1],A[2]+B[2]];
+  const AC=[A[0]+Cv[0],A[1]+Cv[1],A[2]+Cv[2]];
+  const BC=[B[0]+Cv[0],B[1]+Cv[1],B[2]+Cv[2]];
+  const ABC=[A[0]+B[0]+Cv[0],A[1]+B[1]+Cv[1],A[2]+B[2]+Cv[2]];
+  const edges=[[O,A],[O,B],[O,Cv],[A,AB],[A,AC],[B,AB],[B,BC],[Cv,AC],[Cv,BC],[AB,ABC],[AC,ABC],[BC,ABC]];
+  const cx=[],cy=[],cz=[];
+  edges.forEach(([p,q])=>{cx.push(p[0],q[0],null);cy.push(p[1],q[1],null);cz.push(p[2],q[2],null);});
+  const cellTrace = {
+    type:'scatter3d',mode:'lines',name:'unit cell',
+    x:cx,y:cy,z:cz,showlegend:false,hoverinfo:'none',
+    line:{color:'rgba(79,195,247,0.28)',width:1.5,dash:'dot'}
+  };
+
+  const layout = {
+    paper_bgcolor:'#0f1219',plot_bgcolor:'#0f1219',
+    margin:{l:0,r:0,t:0,b:0},
+    legend:{font:{family:"'Space Mono',monospace",size:10,color:'#8a9ab8'},
+            bgcolor:'rgba(0,0,0,0)',bordercolor:'rgba(255,255,255,0.07)',borderwidth:1,
+            x:0.02,y:0.98,xanchor:'left',yanchor:'top'},
+    scene:{
+      bgcolor:'#0f1219',
+      xaxis:{showgrid:false,zeroline:false,showticklabels:false,showline:false,title:'',backgroundcolor:'#0f1219'},
+      yaxis:{showgrid:false,zeroline:false,showticklabels:false,showline:false,title:'',backgroundcolor:'#0f1219'},
+      zaxis:{showgrid:false,zeroline:false,showticklabels:false,showline:false,title:'',backgroundcolor:'#0f1219'},
+      camera:{eye:{x:1.6,y:1.6,z:1.2}}
+    }
+  };
+  Plotly.newPlot(el,[...atomTraces,bondTrace,cellTrace],layout,
+    {responsive:true,displayModeBar:false,scrollZoom:true});
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+loadCollection();
+</script>
+</body>
+</html>
