@@ -270,20 +270,7 @@
   .btn-viz:hover  { background: rgba(79,195,247,0.18); border-color: var(--accent); }
   .btn-viz.active { background: rgba(79,195,247,0.15); border-color: var(--accent); }
 
-  /* Save to Atlas */
-  .btn-save {
-    padding: 8px 11px;
-    background: rgba(102,187,106,0.08);
-    color: var(--green);
-    font-family: var(--mono); font-size: 11px; font-weight: 700;
-    border: 1px solid rgba(102,187,106,0.28);
-    border-radius: 7px; cursor: pointer; transition: all 0.2s;
-    letter-spacing: 0.04em; white-space: nowrap;
-  }
-  .btn-save:hover    { background: rgba(102,187,106,0.18); border-color: var(--green); }
-  .btn-save.saved    { color: var(--text3); border-color: var(--border); background: transparent; cursor: default; }
-  .btn-save:disabled { opacity: 0.5; cursor: not-allowed; }
-
+  
   /* Download CIF */
   .btn-cif {
     padding: 8px 11px;
@@ -626,7 +613,7 @@ function renderPage() {
     const wrapId  = `col-wrap-${globalIdx}`;
     const loadId  = `col-loading-${globalIdx}`;
     const btnId   = `col-vizBtn-${globalIdx}`;
-    const saveId  = `col-saveBtn-${globalIdx}`;
+    //const saveId  = `col-saveBtn-${globalIdx}`;
 
     // Structure ID from MongoDB (_id) if available
     const structId = r._id || r.id || '';
@@ -684,10 +671,7 @@ function renderPage() {
           ◎ Visualize
         </button>
 
-        <button class="btn-save" id="${saveId}"
-                onclick="saveToAtlas(${globalIdx}, '${saveId}', '${plain}')">
-          ↑ Save
-        </button>
+    
 
         <button class="btn-cif"
                 onclick="downloadCIF(${globalIdx}, '${plain}')">
