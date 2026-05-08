@@ -16,7 +16,14 @@ tqdm
 fastapi
 uvicorn
 
+motor
+pymongo
+dnspython
+
 bcrypt
 python-jose[cryptography]
+passlib[bcrypt]
 
 python-multipart
+
+python-dotenv
