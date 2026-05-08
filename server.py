@@ -147,8 +147,24 @@ async def home():
 
 def open_browser():
     time.sleep(2)
-    webbrowser.open("https://crystalgen.onrender.com")
-#vatsa changes here 
+
+    deployed_url = "https://crystalgen.onrender.com"
+    local_url = "http://127.0.0.1:8000"
+
+    try:
+        # Check if deployed site is alive
+        response = requests.get(deployed_url, timeout=5)
+
+        if response.status_code == 200:
+            webbrowser.open(deployed_url)
+        else:
+            webbrowser.open(local_url)
+
+    except Exception:
+        # If Render is sleeping/down/no internet
+        webbrowser.open(local_url)
+
+
 if __name__ == "__main__":
     threading.Thread(target=open_browser).start()
 
@@ -158,7 +174,6 @@ if __name__ == "__main__":
         port=8000,
         reload=True
     )
-
 # ══════════════════════════════════════════════════════════════════════════════
 #  AUTH ROUTES — public
 # ══════════════════════════════════════════════════════════════════════════════
