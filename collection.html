@@ -270,7 +270,6 @@
   .btn-viz:hover  { background: rgba(79,195,247,0.18); border-color: var(--accent); }
   .btn-viz.active { background: rgba(79,195,247,0.15); border-color: var(--accent); }
 
-  
   /* Download CIF */
   .btn-cif {
     padding: 8px 11px;
@@ -357,7 +356,7 @@
 <main>
   <div class="page-hero">
     <h1>My <em>Saved Structures</em></h1>
-    <p>All crystal structures saved from the generator. Visualize, download as CIF, or re-save to Atlas.</p>
+    <p>All crystal structures saved from the generator. Visualize, download as CIF, or delete from your collection.</p>
   </div>
 
   <div class="toolbar">
@@ -412,7 +411,11 @@
 <div id="toast"></div>
 
 <script>
-const API     = 'http://127.0.0.1:8000';
+// FIX #2: Dynamic API URL — works on localhost AND on Render deployment
+const API = (window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost')
+  ? 'http://127.0.0.1:8000'
+  : 'https://crystalgen.onrender.com';
+
 const PAGE_SZ = 12;
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
@@ -479,19 +482,19 @@ function showState(name, msg = '') {
 function realWorldScore(r) {
   let score = 100;
   const a = r.abc ? r.abc[0] : 5;
-  if (r.energy >= 0)         score -= 35;
-  else if (r.energy > -0.1)  score -= 15;
-  else if (r.energy > -0.5)  score -=  5;
-  if      (r.ehull > 0.200) score -= 40;
-  else if (r.ehull > 0.100) score -= 25;
-  else if (r.ehull > 0.050) score -= 12;
-  else if (r.ehull > 0.025) score -=  5;
-  if (a < 2.0 || a > 30)      score -= 30;
-  else if (a < 2.5 || a > 25) score -= 12;
-  if (r.band_gap < -0.05)    score -= 20;
-  else if (r.band_gap < 0)   score -=  8;
-  if (r.n_atoms < 2)         score -= 20;
-  else if (r.n_atoms > 50)   score -=  8;
+  if (r.energy >= 0)           score -= 35;
+  else if (r.energy > -0.1)    score -= 15;
+  else if (r.energy > -0.5)    score -=  5;
+  if      (r.ehull > 0.200)    score -= 40;
+  else if (r.ehull > 0.100)    score -= 25;
+  else if (r.ehull > 0.050)    score -= 12;
+  else if (r.ehull > 0.025)    score -=  5;
+  if (a < 2.0 || a > 30)       score -= 30;
+  else if (a < 2.5 || a > 25)  score -= 12;
+  if (r.band_gap < -0.05)      score -= 20;
+  else if (r.band_gap < 0)     score -=  8;
+  if (r.n_atoms < 2)           score -= 20;
+  else if (r.n_atoms > 50)     score -=  8;
   return Math.max(0, Math.min(100, score));
 }
 
@@ -591,7 +594,6 @@ function renderPage() {
     const pillCls   = stabilityPillClass(r);
     const pillLbl   = stabilityLabel(r);
 
-    // Date — prefer created_at, fall back to saved_at
     const rawDate = r.created_at || r.saved_at;
     const dateStr = rawDate
       ? new Date(rawDate).toLocaleDateString('en-GB', {day:'numeric',month:'short',year:'numeric'})
@@ -607,16 +609,14 @@ function renderPage() {
     const energyClass = r.energy < 0 ? 'neg' : 'pos';
     const ehullClass  = r.ehull < 0.025 ? 'neg' : r.ehull < 0.1 ? 'accent' : 'pos';
 
-    // IDs for this card's elements
-    const cardId  = `col-card-${globalIdx}`;
-    const viewId  = `col-viewer-${globalIdx}`;
-    const wrapId  = `col-wrap-${globalIdx}`;
-    const loadId  = `col-loading-${globalIdx}`;
-    const btnId   = `col-vizBtn-${globalIdx}`;
-    //const saveId  = `col-saveBtn-${globalIdx}`;
+    const cardId = `col-card-${globalIdx}`;
+    const viewId = `col-viewer-${globalIdx}`;
+    const wrapId = `col-wrap-${globalIdx}`;
+    const loadId = `col-loading-${globalIdx}`;
+    const btnId  = `col-vizBtn-${globalIdx}`;
 
-    // Structure ID from MongoDB (_id) if available
-    const structId = r._id || r.id || '';
+    // FIX #3: Always delete by label — consistent with backend DELETE /structures/{label}
+    const deleteLabel = r.label || plain;
 
     const card = document.createElement('div');
     card.className   = 'col-card';
@@ -671,27 +671,19 @@ function renderPage() {
           ◎ Visualize
         </button>
 
-    
-
         <button class="btn-cif"
                 onclick="downloadCIF(${globalIdx}, '${plain}')">
           ↓ CIF
         </button>
 
         <button class="btn-del"
-                onclick="deleteStructure('${plain}', '${cardId}', '${structId}')">
+                onclick="deleteStructure('${deleteLabel}', '${cardId}', '${plain}')">
           ✕
         </button>
       </div>
     `;
 
     grid.appendChild(card);
-
-    // If already saved to Atlas, mark the button
-    if (r._id) {
-      const btn = document.getElementById(saveId);
-      if (btn) { btn.textContent = '✓ Saved'; btn.classList.add('saved'); btn.disabled = true; }
-    }
   });
 
   // Pagination
@@ -709,60 +701,15 @@ function changePage(delta) {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-//  SAVE TO MONGO ATLAS
-// ══════════════════════════════════════════════════════════════════════════════
-async function saveToAtlas(globalIdx, btnId, plainLabel) {
-  const btn = document.getElementById(btnId);
-  if (!btn || btn.disabled) return;
-
-  btn.disabled    = true;
-  btn.textContent = '…';
-
-  const r = filteredList[globalIdx];
-
-  try {
-    const resp = await fetch(`${API}/save`, {
-      method:  'POST',
-      headers: authHeaders(),
-      body:    JSON.stringify({
-        structure:r,
-        elements:r.requested_elements || [],
-        temperature: r.temperature || 0.8,
-        label: plainLabel,
-      }),
-    });
-
-    if (resp.status === 401) { logout(); return; }
-    const data = await resp.json();
-    if (!data.ok) throw new Error( data.error || 'Save failed');
-
-    // Persist the returned _id back into our local array so CIF download works
-    const saved = filteredList[globalIdx];
-    saved._id = data._id || data.id || saved._id;
-    allStructures.forEach((s, i) => {
-      if (plainFormula(s.symbols) === plainLabel) allStructures[i]._id = saved._id;
-    });
-
-    btn.textContent = '✓ Saved';
-    btn.classList.add('saved');
-    showToast(`${plainLabel} saved to Atlas`, 'success');
-  } catch (e) {
-    btn.disabled    = false;
-    btn.textContent = '↑ Save';
-    showToast('Save failed: ' + e.message, 'error');
-  }
-}
-
-// ══════════════════════════════════════════════════════════════════════════════
 //  DOWNLOAD AS CIF
 //  Two paths:
-//   1. If structure has a MongoDB _id → hit the server's /structures/:id/cif
-//   2. Otherwise → build the CIF client-side from stored data
+//   1. If structure has a MongoDB _id → hit server /structures/:id/cif
+//   2. Otherwise → build CIF client-side from stored data
 // ══════════════════════════════════════════════════════════════════════════════
 async function downloadCIF(globalIdx, plainLabel) {
   const r = filteredList[globalIdx];
 
-  // ── Path 1: server-side CIF via MongoDB id ────────────────────────────────
+  // Path 1: server-side CIF via MongoDB _id
   if (r._id) {
     try {
       const resp = await fetch(`${API}/structures/${r._id}/cif`, {
@@ -772,20 +719,19 @@ async function downloadCIF(globalIdx, plainLabel) {
       const blob = await resp.blob();
       triggerDownload(blob, `${plainLabel}_cdvae.cif`);
       showToast(`Downloaded ${plainLabel}.cif`, 'success');
+      return;
     } catch (e) {
       // fall through to client-side generation
-      clientCIF(r, plainLabel);
     }
-    return;
   }
 
-  // ── Path 2: client-side CIF generation ───────────────────────────────────
+  // Path 2: client-side CIF generation
   clientCIF(r, plainLabel);
 }
 
 function clientCIF(r, plainLabel) {
   try {
-    const cif = buildCIF(r);
+    const cif  = buildCIF(r);
     const blob = new Blob([cif], { type: 'chemical/x-cif' });
     triggerDownload(blob, `${plainLabel}_cdvae.cif`);
     showToast(`Downloaded ${plainLabel}.cif`, 'success');
@@ -797,7 +743,7 @@ function clientCIF(r, plainLabel) {
 function triggerDownload(blob, filename) {
   const url = URL.createObjectURL(blob);
   const a   = document.createElement('a');
-  a.href    = url;
+  a.href     = url;
   a.download = filename;
   document.body.appendChild(a);
   a.click();
@@ -805,7 +751,7 @@ function triggerDownload(blob, filename) {
   setTimeout(() => URL.revokeObjectURL(url), 5000);
 }
 
-// ── CIF builder (uses frac_coords if available, else cartesian fallback) ──────
+// ── CIF builder ───────────────────────────────────────────────────────────────
 function buildCIF(r) {
   const symbols = r.symbols || [];
   const lattice = r.lattice || [[5,0,0],[0,5,0],[0,0,5]];
@@ -813,20 +759,18 @@ function buildCIF(r) {
   const cart    = r.cartesian   || [];
 
   const [A, B, C] = lattice;
-
-  function vlen(v) { return Math.sqrt(v[0]**2 + v[1]**2 + v[2]**2); }
-  function dot(u, v) { return u[0]*v[0] + u[1]*v[1] + u[2]*v[2]; }
+  function vlen(v)  { return Math.sqrt(v[0]**2 + v[1]**2 + v[2]**2); }
+  function dot(u,v) { return u[0]*v[0] + u[1]*v[1] + u[2]*v[2]; }
   function clamp(x) { return Math.max(-1, Math.min(1, x)); }
 
   const a = vlen(A), b = vlen(B), c = vlen(C);
-  const alpha = (180 / Math.PI) * Math.acos(clamp(dot(B,C) / (b*c)));
-  const beta  = (180 / Math.PI) * Math.acos(clamp(dot(A,C) / (a*c)));
-  const gamma = (180 / Math.PI) * Math.acos(clamp(dot(A,B) / (a*b)));
+  const alpha = (180/Math.PI) * Math.acos(clamp(dot(B,C)/(b*c)));
+  const beta  = (180/Math.PI) * Math.acos(clamp(dot(A,C)/(a*c)));
+  const gamma = (180/Math.PI) * Math.acos(clamp(dot(A,B)/(a*b)));
 
-  // Convert cartesian → fractional if frac_coords not stored
+  // Use frac_coords if available, else approximate from cartesian
   let coords = frac;
   if (!coords.length && cart.length) {
-    // Simple inversion for orthorhombic; for full triclinic a matrix inverse is needed
     coords = cart.map(pos => [pos[0]/a, pos[1]/b, pos[2]/c]);
   }
 
@@ -858,7 +802,7 @@ function buildCIF(r) {
   symbols.forEach((sym, i) => {
     elCount[sym] = (elCount[sym] || 0) + 1;
     const label = `${sym}${elCount[sym]}`;
-    const fc = coords[i] || [0, 0, 0];
+    const fc    = coords[i] || [0, 0, 0];
     lines.push(`  ${label.padEnd(8)} ${sym.padEnd(4)} ${fc[0].toFixed(6).padStart(10)} ${fc[1].toFixed(6).padStart(10)} ${fc[2].toFixed(6).padStart(10)}`);
   });
 
@@ -866,20 +810,20 @@ function buildCIF(r) {
 }
 
 // ── Delete structure ──────────────────────────────────────────────────────────
-async function deleteStructure(label, cardId, structId) {
-  if (!confirm(`Delete "${label}"? This cannot be undone.`)) return;
+// FIX #3: Always delete by label — matches backend DELETE /structures/{label}
+async function deleteStructure(deleteLabel, cardId, plainLabel) {
+  if (!confirm(`Delete "${plainLabel}"? This cannot be undone.`)) return;
   try {
-    // Delete by _id if available, else by formula label
-    const endpoint = structId
-      ? `${API}/structures/${encodeURIComponent(structId)}`
-      : `${API}/structures/${encodeURIComponent(label)}`;
-
-    const resp = await fetch(endpoint, { method: 'DELETE', headers: authHeaders() });
+    const resp = await fetch(`${API}/structures/${encodeURIComponent(deleteLabel)}`, {
+      method: 'DELETE',
+      headers: authHeaders()
+    });
     if (resp.status === 401) { logout(); return; }
     const data = await resp.json();
     if (!data.ok) throw new Error(data.error || 'Delete failed');
 
-    allStructures = allStructures.filter(r => plainFormula(r.symbols) !== label);
+    // Remove from local arrays
+    allStructures = allStructures.filter(r => (r.label || plainFormula(r.symbols)) !== deleteLabel);
     filterCards();
 
     const card = document.getElementById(cardId);
@@ -889,7 +833,7 @@ async function deleteStructure(label, cardId, structId) {
       card.style.transform  = 'scale(0.95)';
       setTimeout(() => card.remove(), 300);
     }
-    showToast(`${label} deleted`, '');
+    showToast(`${plainLabel} deleted`, '');
   } catch (e) {
     showToast('Delete error: ' + e.message, 'error');
   }
@@ -899,8 +843,8 @@ async function deleteStructure(label, cardId, structId) {
 //  VISUALIZE
 // ══════════════════════════════════════════════════════════════════════════════
 function toggleVisualize(globalIdx, viewId, wrapId, loadId, btnId) {
-  const wrap  = document.getElementById(wrapId);
-  const btn   = document.getElementById(btnId);
+  const wrap   = document.getElementById(wrapId);
+  const btn    = document.getElementById(btnId);
   const isOpen = wrap.classList.contains('open');
 
   if (isOpen) {
@@ -942,10 +886,10 @@ const COVALENT_RADII = {
   Y:1.90,Zr:1.75,Nb:1.64,Mo:1.54,Pd:1.39,Ag:1.45,Ba:2.15,La:2.07,
   Hf:1.75,W:1.54,Pt:1.36,Au:1.36,Pb:1.46,Bi:1.48,
 };
-function getElColor(s)  { return ELEMENT_COLORS[s] || '#4fc3f7'; }
-function getCR(s)       { return COVALENT_RADII[s] || 1.20; }
+function getElColor(s) { return ELEMENT_COLORS[s] || '#4fc3f7'; }
+function getCR(s)      { return COVALENT_RADII[s] || 1.20; }
 function areBonded(a,b) {
-  const dx=a.x-b.x,dy=a.y-b.y,dz=a.z-b.z;
+  const dx=a.x-b.x, dy=a.y-b.y, dz=a.z-b.z;
   return Math.sqrt(dx*dx+dy*dy+dz*dz) < (getCR(a.elem)+getCR(b.elem))*1.25;
 }
 function largestCluster(atoms) {

@@ -61,7 +61,6 @@
   .logo-text { font-family: var(--mono); font-size: 14px; color: var(--text); }
   .logo-text span { color: var(--accent); }
   .header-tag {
-    margin-left: auto;
     font-family: var(--mono);
     font-size: 10px;
     color: var(--text3);
@@ -70,9 +69,7 @@
     border-radius: 4px;
     letter-spacing: 0.08em;
   }
-  .header-nav {
-    display: flex; gap: 0.5rem;
-  }
+  .header-nav { display: flex; gap: 0.5rem; }
   .nav-link {
     font-family: var(--mono);
     font-size: 11px;
@@ -85,6 +82,21 @@
   }
   .nav-link:hover { border-color: var(--accent); color: var(--accent); }
   .nav-link.active { border-color: var(--accent); color: var(--accent); background: rgba(79,195,247,0.08); }
+
+  /* FIX: auth row in header */
+  .header-right {
+    display: flex; align-items: center; gap: 10px; margin-left: auto;
+  }
+  .header-user {
+    font-family: var(--mono); font-size: 11px; color: var(--text2);
+  }
+  .btn-logout {
+    font-family: var(--mono); font-size: 11px; color: var(--text3);
+    background: transparent; border: 1px solid var(--border);
+    padding: 4px 10px; border-radius: 6px; cursor: pointer;
+    transition: all 0.15s; letter-spacing: 0.06em;
+  }
+  .btn-logout:hover { color: var(--red); border-color: rgba(239,83,80,0.4); }
 
   main { max-width: 1100px; margin: 0 auto; padding: 3rem 2rem 5rem; }
 
@@ -261,8 +273,8 @@
   }
   .metric-tile .ml { font-size: 10px; color: var(--text3); font-family: var(--mono); margin-bottom: 4px; }
   .metric-tile .mv { font-family: var(--mono); font-size: 16px; font-weight: 700; color: var(--text); }
-  .metric-tile.accent-blue .mv { color: var(--accent); }
-  .metric-tile.accent-green .mv { color: var(--green); }
+  .metric-tile.accent-blue .mv   { color: var(--accent); }
+  .metric-tile.accent-green .mv  { color: var(--green); }
   .metric-tile.accent-purple .mv { color: var(--purple); }
 
   .lattice-grid {
@@ -279,7 +291,7 @@
     text-align: center;
   }
   .lat-chip .lc-label { font-size: 9px; color: var(--text3); margin-bottom: 2px; }
-  .lat-chip .lc-val { color: var(--text); font-weight: 700; }
+  .lat-chip .lc-val   { color: var(--text); font-weight: 700; }
 
   .elements-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 1.25rem; }
   .el-badge {
@@ -386,10 +398,17 @@
   </div>
   <span class="logo-text">CD<span>VAE</span> · CIF Visualizer</span>
   <nav class="header-nav">
-    <a href="index.html" class="nav-link">Generator</a>
+    <a href="index.html"      class="nav-link">Generator</a>
+    <a href="collection.html" class="nav-link">Collection</a>
     <a href="cif_viewer.html" class="nav-link active">CIF Viewer</a>
   </nav>
-  <div class="header-tag">CIF · Plotly 3D</div>
+
+  <!-- FIX: added auth display + logout -->
+  <div class="header-right">
+    <span class="header-user">⬡ <span id="header-username"></span></span>
+    <button class="btn-logout" onclick="logout()">Sign Out</button>
+    <div class="header-tag">CIF · Plotly 3D</div>
+  </div>
 </header>
 
 <main>
@@ -422,6 +441,20 @@
 </main>
 
 <script>
+// FIX: Auth guard — redirect to login if no token
+(function authGuard() {
+  const token = localStorage.getItem('cdvae_token');
+  if (!token) { window.location.href = 'login.html'; return; }
+  const el = document.getElementById('header-username');
+  if (el) el.textContent = localStorage.getItem('cdvae_username') || 'User';
+})();
+
+function logout() {
+  localStorage.removeItem('cdvae_token');
+  localStorage.removeItem('cdvae_username');
+  window.location.href = 'login.html';
+}
+
 // ══════════════════════════════════════════════════════════════════════════════
 //  ELEMENT DATA
 // ══════════════════════════════════════════════════════════════════════════════
@@ -446,10 +479,10 @@ const COVALENT_RADII = {
   Ba:2.15,La:2.07,Hf:1.75,W:1.54,Pt:1.36,Au:1.36,Pb:1.46,Bi:1.48,
 };
 function getElColor(s) { return ELEMENT_COLORS[s] || '#4fc3f7'; }
-function getCovR(s)     { return COVALENT_RADII[s] || 1.20; }
+function getCovR(s)    { return COVALENT_RADII[s] || 1.20; }
 
 // ══════════════════════════════════════════════════════════════════════════════
-//  SAMPLE CIF DATA (embedded so the viewer works with no server)
+//  SAMPLE CIF DATA
 // ══════════════════════════════════════════════════════════════════════════════
 const SAMPLES = {
   NaCl: `data_NaCl
@@ -561,8 +594,6 @@ O3 O  0.00000 0.50000 0.51300`,
 //  CIF PARSER
 // ══════════════════════════════════════════════════════════════════════════════
 function parseCIF(text) {
-  const lines = text.split('\n');
-
   function getValue(key) {
     const re = new RegExp(`^\\s*${key}\\s+(.+)`, 'im');
     const m = text.match(re);
@@ -570,20 +601,19 @@ function parseCIF(text) {
     return m[1].trim().replace(/['"]/g, '');
   }
 
-  const a     = parseFloat(getValue('_cell_length_a'))     || 5.0;
-  const b     = parseFloat(getValue('_cell_length_b'))     || 5.0;
-  const c     = parseFloat(getValue('_cell_length_c'))     || 5.0;
-  const alpha = parseFloat(getValue('_cell_angle_alpha'))  || 90;
-  const beta  = parseFloat(getValue('_cell_angle_beta'))   || 90;
-  const gamma = parseFloat(getValue('_cell_angle_gamma'))  || 90;
+  const a     = parseFloat(getValue('_cell_length_a'))    || 5.0;
+  const b     = parseFloat(getValue('_cell_length_b'))    || 5.0;
+  const c     = parseFloat(getValue('_cell_length_c'))    || 5.0;
+  const alpha = parseFloat(getValue('_cell_angle_alpha')) || 90;
+  const beta  = parseFloat(getValue('_cell_angle_beta'))  || 90;
+  const gamma = parseFloat(getValue('_cell_angle_gamma')) || 90;
 
-  // Lattice vectors from a, b, c, alpha, beta, gamma
   const toRad = d => d * Math.PI / 180;
   const cosA = Math.cos(toRad(alpha));
   const cosB = Math.cos(toRad(beta));
   const cosG = Math.cos(toRad(gamma));
   const sinG = Math.sin(toRad(gamma));
-  const v = Math.sqrt(1 - cosA*cosA - cosB*cosB - cosG*cosG + 2*cosA*cosB*cosG);
+  const v    = Math.sqrt(1 - cosA*cosA - cosB*cosB - cosG*cosG + 2*cosA*cosB*cosG);
 
   const lattice = [
     [a, 0, 0],
@@ -591,11 +621,7 @@ function parseCIF(text) {
     [c * cosB, c * (cosA - cosB*cosG)/sinG, c * v/sinG]
   ];
 
-  // Parse atom_site loop
-  const loopIdx = text.toLowerCase().indexOf('loop_');
   const atoms = [];
-
-  // Find all loop_ blocks and find the one with atom_site_fract_x
   const loopBlocks = [];
   let pos = 0;
   while (true) {
@@ -606,10 +632,9 @@ function parseCIF(text) {
   }
 
   for (const startIdx of loopBlocks) {
-    const blockText = text.slice(startIdx);
-    const blockLines = blockText.split('\n').slice(1); // skip 'loop_' line
+    const blockText  = text.slice(startIdx);
+    const blockLines = blockText.split('\n').slice(1);
 
-    // Collect headers
     const headers = [];
     let dataStart = 0;
     for (let i = 0; i < blockLines.length; i++) {
@@ -637,7 +662,6 @@ function parseCIF(text) {
       const parts = l.split(/\s+/);
       if (parts.length < 3) continue;
 
-      // Parse symbol: prefer type_symbol, else extract from label
       let sym = '';
       if (iSymbol >= 0 && parts[iSymbol]) {
         sym = parts[iSymbol];
@@ -649,20 +673,17 @@ function parseCIF(text) {
       const fx = parseFloat(parts[iX]);
       const fy = parseFloat(parts[iY]);
       const fz = parseFloat(parts[iZ]);
-
       if (isNaN(fx) || isNaN(fy) || isNaN(fz)) continue;
 
-      // Fractional → Cartesian
       const x = fx*lattice[0][0] + fy*lattice[1][0] + fz*lattice[2][0];
       const y = fx*lattice[0][1] + fy*lattice[1][1] + fz*lattice[2][1];
       const z = fx*lattice[0][2] + fy*lattice[1][2] + fz*lattice[2][2];
 
       atoms.push({ elem: sym, x, y, z, fx, fy, fz });
     }
-    break; // found the atom site loop
+    break;
   }
 
-  // Formula
   const cnt = {};
   atoms.forEach(a => cnt[a.elem] = (cnt[a.elem]||0)+1);
   const formula = Object.entries(cnt)
@@ -679,7 +700,6 @@ function parseCIF(text) {
 
 // ══════════════════════════════════════════════════════════════════════════════
 //  SUPERCELL EXPANSION
-//  Replicates atoms across (na × nb × nc) unit cells
 // ══════════════════════════════════════════════════════════════════════════════
 function expandSupercell(parsed, na, nb, nc) {
   const { lattice, atoms } = parsed;
@@ -728,19 +748,18 @@ function buildBonds(atoms) {
 //  CELL EDGES
 // ══════════════════════════════════════════════════════════════════════════════
 function buildCellEdges(lat, na, nb, nc) {
-  // For supercell, draw the outer box of the expanded cell
-  const A = [lat[0][0]*na, lat[0][1]*na, lat[0][2]*na];
-  const B = [lat[1][0]*nb, lat[1][1]*nb, lat[1][2]*nb];
-  const C = [lat[2][0]*nc, lat[2][1]*nc, lat[2][2]*nc];
-  const O = [0,0,0];
-  const AB  = [A[0]+B[0],A[1]+B[1],A[2]+B[2]];
-  const AC  = [A[0]+C[0],A[1]+C[1],A[2]+C[2]];
-  const BC  = [B[0]+C[0],B[1]+C[1],B[2]+C[2]];
-  const ABC = [A[0]+B[0]+C[0],A[1]+B[1]+C[1],A[2]+B[2]+C[2]];
+  const A   = [lat[0][0]*na, lat[0][1]*na, lat[0][2]*na];
+  const B   = [lat[1][0]*nb, lat[1][1]*nb, lat[1][2]*nb];
+  const C   = [lat[2][0]*nc, lat[2][1]*nc, lat[2][2]*nc];
+  const O   = [0,0,0];
+  const AB  = [A[0]+B[0], A[1]+B[1], A[2]+B[2]];
+  const AC  = [A[0]+C[0], A[1]+C[1], A[2]+C[2]];
+  const BC  = [B[0]+C[0], B[1]+C[1], B[2]+C[2]];
+  const ABC = [A[0]+B[0]+C[0], A[1]+B[1]+C[1], A[2]+B[2]+C[2]];
   const edges = [[O,A],[O,B],[O,C],[A,AB],[A,AC],[B,AB],[B,BC],[C,AC],[C,BC],[AB,ABC],[AC,ABC],[BC,ABC]];
   const xs=[],ys=[],zs=[];
   edges.forEach(([p,q]) => { xs.push(p[0],q[0],null); ys.push(p[1],q[1],null); zs.push(p[2],q[2],null); });
-  return {xs,ys,zs};
+  return {xs, ys, zs};
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -750,7 +769,6 @@ function renderPlotly(containerId, atoms, lattice, na, nb, nc) {
   const el = document.getElementById(containerId);
   if (!el) return;
 
-  // Atom traces per element
   const byEl = {};
   atoms.forEach(a => {
     if (!byEl[a.elem]) byEl[a.elem] = {x:[],y:[],z:[]};
@@ -810,7 +828,7 @@ function renderPlotly(containerId, atoms, lattice, na, nb, nc) {
 }
 
 // ══════════════════════════════════════════════════════════════════════════════
-//  JSON → CIF  (for re-download of parsed/sample structures)
+//  CIF EXPORT
 // ══════════════════════════════════════════════════════════════════════════════
 function structureToCIF(parsed) {
   const {a, b, c, alpha, beta, gamma, spaceGroup, dataName, atoms} = parsed;
@@ -845,16 +863,16 @@ function structureToCIF(parsed) {
 // ══════════════════════════════════════════════════════════════════════════════
 //  RENDER RESULT CARD
 // ══════════════════════════════════════════════════════════════════════════════
-let _parsedStore = {};  // keyed by cardId → parsed
+let _parsedStore = {};
 
 function renderCard(parsed, cardId, filename) {
   _parsedStore[cardId] = parsed;
   const {formula, a, b, c, alpha, beta, gamma, spaceGroup, atoms} = parsed;
   const uniqueEls = [...new Set(atoms.map(a=>a.elem))];
-  const nAtoms = atoms.length;
+  const nAtoms    = atoms.length;
 
   const panel = document.getElementById('result-panel');
-  const div = document.createElement('div');
+  const div   = document.createElement('div');
   div.innerHTML = `
     <div class="result-card" id="card-${cardId}">
       <div class="rc-header">
@@ -988,7 +1006,7 @@ function downloadCIF(cardId) {
 // ══════════════════════════════════════════════════════════════════════════════
 function setError(msg) {
   const b = document.getElementById('err-box');
-  b.textContent = msg;
+  b.textContent   = msg;
   b.style.display = msg ? 'block' : 'none';
 }
 
@@ -1024,8 +1042,8 @@ document.getElementById('file-input').addEventListener('change', e => {
 
 // Drag & drop
 const dz = document.getElementById('drop-zone');
-dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('dragover'); });
-dz.addEventListener('dragleave', () => dz.classList.remove('dragover'));
+dz.addEventListener('dragover',  e => { e.preventDefault(); dz.classList.add('dragover'); });
+dz.addEventListener('dragleave', ()  => dz.classList.remove('dragover'));
 dz.addEventListener('drop', e => {
   e.preventDefault(); dz.classList.remove('dragover');
   [...e.dataTransfer.files]
