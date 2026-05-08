@@ -1,20 +1,22 @@
 torch
-
 numpy
 pandas
 matplotlib
 scikit-learn
 pyyaml
 
-Pytorch-lightning
+pytorch-lightning
 omegaconf
 hydra-core
-UploadFile
-File
-Form
+
 pymatgen
 ase
 tqdm
+
 fastapi
 uvicorn
+
 bcrypt
+python-jose[cryptography]
+
+python-multipart
