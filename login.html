@@ -382,8 +382,11 @@
 <div class="footer-note">JWT · bcrypt · MongoDB Atlas · CDVAE v4</div>
 
 <script>
-const API = 'http://127.0.0.1:8000';
-
+// FIX #4: Dynamic API URL — works on localhost AND on Render deployment
+const API = (window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost')
+  ? 'http://127.0.0.1:8000'
+  : 'https://crystalgen.onrender.com';
+ 
 // ── Tab switching ─────────────────────────────────────────────────────────────
 function switchTab(tab) {
   document.getElementById('section-login').classList.toggle('active', tab === 'login');
@@ -392,63 +395,63 @@ function switchTab(tab) {
   document.getElementById('tab-register').classList.toggle('active', tab === 'register');
   clearMsgs();
 }
-
+ 
 function clearMsgs() {
   ['login-msg','register-msg'].forEach(id => {
     const el = document.getElementById(id);
     el.className = 'msg'; el.textContent = '';
   });
 }
-
+ 
 function showMsg(id, text, type) {
   const el = document.getElementById(id);
   el.textContent = text;
   el.className   = `msg ${type}`;
 }
-
+ 
 // ── Password show/hide ────────────────────────────────────────────────────────
 function togglePw(inputId, btn) {
   const inp = document.getElementById(inputId);
   inp.type  = inp.type === 'password' ? 'text' : 'password';
   btn.textContent = inp.type === 'password' ? '👁' : '🙈';
 }
-
+ 
 // ── Password strength meter ───────────────────────────────────────────────────
 function checkStrength() {
   const pw  = document.getElementById('reg-password').value;
   const bar = document.getElementById('strength-bar');
   const lbl = document.getElementById('strength-label');
-
+ 
   let score = 0;
   if (pw.length >= 6)                    score++;
   if (pw.length >= 10)                   score++;
   if (/[A-Z]/.test(pw))                  score++;
   if (/[0-9]/.test(pw))                  score++;
   if (/[^A-Za-z0-9]/.test(pw))          score++;
-
+ 
   const levels = [
-    { pct: '0%',   color: 'transparent',        label: '' },
-    { pct: '25%',  color: 'var(--red)',          label: 'Weak' },
-    { pct: '50%',  color: 'var(--amber,#ffca28)',label: 'Fair' },
-    { pct: '75%',  color: 'var(--accent)',        label: 'Good' },
-    { pct: '90%',  color: 'var(--green)',         label: 'Strong' },
-    { pct: '100%', color: 'var(--green)',         label: 'Very strong' },
+    { pct: '0%',   color: 'transparent',         label: '' },
+    { pct: '25%',  color: 'var(--red)',           label: 'Weak' },
+    { pct: '50%',  color: 'var(--amber,#ffca28)', label: 'Fair' },
+    { pct: '75%',  color: 'var(--accent)',         label: 'Good' },
+    { pct: '90%',  color: 'var(--green)',          label: 'Strong' },
+    { pct: '100%', color: 'var(--green)',          label: 'Very strong' },
   ];
-
-  const lvl        = levels[Math.min(score, 5)];
-  bar.style.width  = lvl.pct;
+ 
+  const lvl            = levels[Math.min(score, 5)];
+  bar.style.width      = lvl.pct;
   bar.style.background = lvl.color;
-  lbl.textContent  = lvl.label;
-  lbl.style.color  = lvl.color;
+  lbl.textContent      = lvl.label;
+  lbl.style.color      = lvl.color;
 }
-
+ 
 // ── Register form validation ──────────────────────────────────────────────────
 function validateRegForm() {
   const username = document.getElementById('reg-username').value.trim();
   const password = document.getElementById('reg-password').value;
   const confirm  = document.getElementById('reg-confirm').value;
   const btn      = document.getElementById('register-btn');
-
+ 
   const ok = (
     username.length >= 3 &&
     username.length <= 32 &&
@@ -458,102 +461,87 @@ function validateRegForm() {
   );
   btn.disabled = !ok;
 }
-
+ 
 // ── Submit login ──────────────────────────────────────────────────────────────
 async function submitLogin() {
   const username = document.getElementById('login-username').value.trim();
   const password = document.getElementById('login-password').value;
-
+ 
   if (!username || !password) {
     showMsg('login-msg', 'Please enter your username and password.', 'error');
     return;
   }
-
+ 
   const btn = document.getElementById('login-btn');
-  btn.disabled    = true;
-  btn.innerHTML   = '<span class="spinner"></span>Signing in…';
+  btn.disabled  = true;
+  btn.innerHTML = '<span class="spinner"></span>Signing in…';
   showMsg('login-msg', 'Authenticating…', 'loading');
-
+ 
   try {
     const resp = await fetch(`${API}/login`, {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify({ username, password }),
     });
-
+ 
     const data = await resp.json();
-
-    if (!resp.ok) {
-      // 401 → wrong credentials
-      throw new Error(data.detail || 'Invalid username or password');
-    }
-
-    // ── Store JWT and username ──────────────────────────────────────────────
+    if (!resp.ok) throw new Error(data.detail || 'Invalid username or password');
+ 
     localStorage.setItem('cdvae_token',    data.access_token);
     localStorage.setItem('cdvae_username', data.username);
-
     showMsg('login-msg', `✓ Welcome back, ${data.username}! Redirecting…`, 'success');
-
     setTimeout(() => { window.location.href = 'index.html'; }, 800);
-
+ 
   } catch (e) {
     showMsg('login-msg', '✗ ' + e.message, 'error');
     btn.disabled  = false;
     btn.innerHTML = 'Sign In →';
   }
 }
-
+ 
 // ── Submit register ───────────────────────────────────────────────────────────
 async function submitRegister() {
   const username = document.getElementById('reg-username').value.trim();
   const email    = document.getElementById('reg-email').value.trim() || null;
   const password = document.getElementById('reg-password').value;
   const confirm  = document.getElementById('reg-confirm').value;
-
+ 
   if (password !== confirm) {
     showMsg('register-msg', 'Passwords do not match.', 'error');
     return;
   }
-
+ 
   const btn = document.getElementById('register-btn');
   btn.disabled  = true;
   btn.innerHTML = '<span class="spinner"></span>Creating account…';
   showMsg('register-msg', 'Creating your account…', 'loading');
-
+ 
   try {
     const resp = await fetch(`${API}/register`, {
       method:  'POST',
       headers: { 'Content-Type': 'application/json' },
       body:    JSON.stringify({ username, email, password }),
     });
-
+ 
     const data = await resp.json();
-
-    if (!resp.ok) {
-      // 409 → username taken
-      throw new Error(data.detail || 'Registration failed');
-    }
-
-    // ── Store JWT ─────────────────────────────────────────────────────────────
+    if (!resp.ok) throw new Error(data.detail || 'Registration failed');
+ 
     localStorage.setItem('cdvae_token',    data.access_token);
     localStorage.setItem('cdvae_username', data.username);
-
     showMsg('register-msg', `✓ Account created! Welcome, ${data.username}. Redirecting…`, 'success');
-
     setTimeout(() => { window.location.href = 'index.html'; }, 900);
-
+ 
   } catch (e) {
     showMsg('register-msg', '✗ ' + e.message, 'error');
     btn.disabled  = false;
     btn.innerHTML = 'Create Account →';
   }
 }
-
+ 
 // ── Auto-redirect if already logged in ───────────────────────────────────────
 (function checkExistingToken() {
   const token = localStorage.getItem('cdvae_token');
   if (!token) return;
-  // Quickly verify with /me — if valid, skip login
   fetch(`${API}/me`, {
     headers: { 'Authorization': `Bearer ${token}` }
   }).then(r => {

@@ -3,20 +3,25 @@ server.py — CDVAE Crystal Generator API
 All config loaded from config.py (which reads .env)
 """
 
+import math
 import traceback
+import requests                                      # FIX #1: was missing, needed in open_browser()
 from datetime import datetime, timezone
 from typing import Optional
 
 import torch
+from bson import ObjectId                            # FIX #3: was missing, needed in download_cif()
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse, PlainTextResponse, Response
 from pydantic import BaseModel, Field
+import pathlib
 import threading
 import webbrowser
 import time
-from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse
+import uvicorn
 
+BASE_DIR = pathlib.Path(__file__).parent            # FIX: absolute path, always relative to server.py
 
 from config import cfg
 cfg.validate()
@@ -37,16 +42,6 @@ except ImportError:
 
 # ── App ───────────────────────────────────────────────────────────────────────
 app = FastAPI(title="CDVAE Crystal Generator", version="4.0")
-app.mount("/static", StaticFiles(directory="."), name="static")
-
-@app.get("/", response_class=FileResponse)
-async def home():
-    return FileResponse("login.html")
-
-@app.get("/index", response_class=FileResponse)
-async def index(username: str = Depends(get_current_user)):
-    return FileResponse("index.html")
-
 
 app.add_middleware(
     CORSMiddleware,
@@ -55,6 +50,15 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# ── Static HTML routes ────────────────────────────────────────────────────────
+@app.get("/", response_class=FileResponse)
+async def home():
+    return FileResponse(BASE_DIR / "login.html")
+
+@app.get("/index", response_class=FileResponse)
+async def index(username: str = Depends(get_current_user)):
+    return FileResponse(BASE_DIR / "index.html")
 
 # ── MongoDB — URI comes from cfg, never hardcoded ─────────────────────────────
 _mongo_client = None
@@ -136,40 +140,26 @@ class SaveStructureRequest(BaseModel):
     temperature: float
     label:       Optional[str] = None
 
-from fastapi.responses import HTMLResponse
-import uvicorn
-
-
-
+# ── Browser opener ────────────────────────────────────────────────────────────
 def open_browser():
     time.sleep(2)
-
     deployed_url = "https://crystalgen.onrender.com"
-    local_url = "http://127.0.0.1:8000"
-
+    local_url    = "http://127.0.0.1:8000"
     try:
-        # Check if deployed site is alive
-        response = requests.get(deployed_url, timeout=5)
-
-        if response.status_code == 200:
-            webbrowser.open(deployed_url)
-        else:
-            webbrowser.open(local_url)
-
+        response = requests.get(deployed_url, timeout=5)   # FIX #1: requests now imported
+        webbrowser.open(deployed_url if response.status_code == 200 else local_url)
     except Exception:
-        # If Render is sleeping/down/no internet
         webbrowser.open(local_url)
 
-
 if __name__ == "__main__":
-    threading.Thread(target=open_browser).start()
-
+    threading.Thread(target=open_browser, daemon=True).start()
     uvicorn.run(
         "server:app",
         host="0.0.0.0",
         port=8000,
-        reload=True
+        reload=False,                                       # FIX #5: reload=True breaks __file__ on some machines
     )
+
 # ══════════════════════════════════════════════════════════════════════════════
 #  AUTH ROUTES — public
 # ══════════════════════════════════════════════════════════════════════════════
@@ -200,7 +190,10 @@ async def login(req: LoginRequest):
     user = await db["users"].find_one({"username": req.username})
     if not user or not verify_password(req.password, user["password_hash"]):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid username or password")
-    await db["users"].update_one({"username": req.username}, {"$set": {"last_login": datetime.now(timezone.utc)}})
+    await db["users"].update_one(
+        {"username": req.username},
+        {"$set": {"last_login": datetime.now(timezone.utc)}}
+    )
     return TokenResponse(access_token=create_access_token(req.username), username=req.username)
 
 
@@ -217,8 +210,11 @@ async def me(username: str = Depends(get_current_user)):
 def generate_api(req: GenerateRequest, username: str = Depends(get_current_user)):
     try:
         composition = [SYMBOL_TO_Z[e.capitalize()] for e in req.elements]
-        results = generate(model, n_samples=req.n_samples, device=device,
-                           composition=composition, temperature=req.temperature)
+        results = generate(
+            model, n_samples=req.n_samples,
+            device=device, composition=composition,
+            temperature=req.temperature
+        )
         return results
     except Exception as e:
         return {"error": str(e), "traceback": traceback.format_exc()}
@@ -232,8 +228,10 @@ def recompute_api(req: RecomputeRequest, username: str = Depends(get_current_use
         if n < 2:
             return {"error": "Cluster must have at least 2 atoms."}
         try:
-            atom_types = torch.tensor([SYMBOL_TO_Z[s.capitalize()] for s in req.symbols],
-                                       dtype=torch.long, device=device)
+            atom_types = torch.tensor(
+                [SYMBOL_TO_Z[s.capitalize()] for s in req.symbols],
+                dtype=torch.long, device=device
+            )
         except KeyError as e:
             return {"error": f"Unknown element symbol: {e}"}
         lat = torch.tensor(req.lattice, dtype=torch.float32, device=device)
@@ -273,8 +271,10 @@ async def save_structure(req: SaveStructureRequest, username: str = Depends(get_
 
 
 @app.get("/structures", tags=["crystal"])
-async def list_structures(limit: int = 50, skip: int = 0,
-                           username: str = Depends(get_current_user)):
+async def list_structures(
+    limit: int = 50, skip: int = 0,
+    username: str = Depends(get_current_user)
+):
     db = get_db()
     if db is None:
         return {"error": "MongoDB not available"}
@@ -305,36 +305,40 @@ async def delete_structure(label: str, username: str = Depends(get_current_user)
         raise
     except Exception as e:
         return {"ok": False, "error": str(e)}
-# server.py  — add this route
 
-from fastapi.responses import PlainTextResponse
 
-@app.get("/structures/{structure_id}/cif", response_class=PlainTextResponse)
+@app.get("/structures/{structure_id}/cif", response_class=PlainTextResponse, tags=["crystal"])
 async def download_cif(structure_id: str, username: str = Depends(get_current_user)):
-    doc = await db.structures.find_one(
-        {"_id": ObjectId(structure_id), "username": username}
-    )
+    db = get_db()                                          # FIX #2: db was never fetched here
+    if db is None:
+        raise HTTPException(500, "Database not available")
+
+    try:
+        oid = ObjectId(structure_id)                       # FIX #3: ObjectId now imported
+    except Exception:
+        raise HTTPException(400, "Invalid structure ID format")
+
+    doc = await db["structures"].find_one({"_id": oid, "username": username})
     if not doc:
         raise HTTPException(status_code=404, detail="Structure not found")
 
-    # Build a minimal CIF from stored lattice + fractional coords
-    symbols   = doc.get("symbols", [])
-    lattice   = doc.get("lattice", [[5,0,0],[0,5,0],[0,0,5]])
-    frac      = doc.get("frac_coords", [])   # store frac_coords when saving!
-    formula   = "".join(sorted(set(symbols)))
+    symbols = doc.get("symbols", [])
+    lattice = doc.get("lattice", [[5, 0, 0], [0, 5, 0], [0, 0, 5]])
+    frac    = doc.get("frac_coords", [])
+    formula = "".join(sorted(set(symbols)))
+
     a_vec, b_vec, c_vec = lattice
 
-    import math
-    def vec_len(v): return math.sqrt(sum(x**2 for x in v))
-    def vec_dot(u,v): return sum(u[i]*v[i] for i in range(3))
+    def vec_len(v):  return math.sqrt(sum(x**2 for x in v))
+    def vec_dot(u, v): return sum(u[i]*v[i] for i in range(3))
 
     a = vec_len(a_vec); b = vec_len(b_vec); c = vec_len(c_vec)
-    cos_alpha = vec_dot(b_vec,c_vec)/(b*c)
-    cos_beta  = vec_dot(a_vec,c_vec)/(a*c)
-    cos_gamma = vec_dot(a_vec,b_vec)/(a*b)
-    alpha = math.degrees(math.acos(max(-1,min(1,cos_alpha))))
-    beta  = math.degrees(math.acos(max(-1,min(1,cos_beta))))
-    gamma = math.degrees(math.acos(max(-1,min(1,cos_gamma))))
+    cos_alpha = vec_dot(b_vec, c_vec) / (b * c)
+    cos_beta  = vec_dot(a_vec, c_vec) / (a * c)
+    cos_gamma = vec_dot(a_vec, b_vec) / (a * b)
+    alpha = math.degrees(math.acos(max(-1, min(1, cos_alpha))))
+    beta  = math.degrees(math.acos(max(-1, min(1, cos_beta))))
+    gamma = math.degrees(math.acos(max(-1, min(1, cos_gamma))))
 
     lines = [
         "data_cdvae_generated",
@@ -357,13 +361,12 @@ async def download_cif(structure_id: str, username: str = Depends(get_current_us
     el_count = {}
     for sym, fc in zip(symbols, frac):
         el_count[sym] = el_count.get(sym, 0) + 1
-        label = f"{sym}{el_count[sym]}"
-        lines.append(f"  {label:<8} {sym:<4} {fc[0]:>10.6f} {fc[1]:>10.6f} {fc[2]:>10.6f}")
+        lbl = f"{sym}{el_count[sym]}"
+        lines.append(f"  {lbl:<8} {sym:<4} {fc[0]:>10.6f} {fc[1]:>10.6f} {fc[2]:>10.6f}")
 
-    cif_text = "\n".join(lines) + "\n"
-    safe_formula = formula.replace(" ","_")
+    cif_text     = "\n".join(lines) + "\n"
+    safe_formula = formula.replace(" ", "_")
 
-    from fastapi.responses import Response
     return Response(
         content=cif_text,
         media_type="chemical/x-cif",
