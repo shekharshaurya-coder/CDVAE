@@ -139,11 +139,7 @@ class SaveStructureRequest(BaseModel):
 from fastapi.responses import HTMLResponse
 import uvicorn
 
-@app.get("/", response_class=HTMLResponse)
-async def home():
-    return """
-    <h1>CDVAE Login Page</h1>
-    """
+
 
 def open_browser():
     time.sleep(2)
