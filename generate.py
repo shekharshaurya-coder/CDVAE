@@ -153,7 +153,6 @@ def generate(
     "frac_coords": fc_i.tolist(),
     "cartesian": cart.tolist(),
     "lattice": lat.tolist(),
-
     "energy": float(props["energy"][i].item()),
     "ehull": float(max(0.0, props["ehull"][i].item())),
     "band_gap": float(props["bg"][i].item()),

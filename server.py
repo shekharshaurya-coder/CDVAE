@@ -147,14 +147,14 @@ async def home():
 
 def open_browser():
     time.sleep(2)
-    webbrowser.open("http://127.0.0.1:8000")
-
+    webbrowser.open("https://crystalgen.onrender.com")
+#vatsa changes here 
 if __name__ == "__main__":
     threading.Thread(target=open_browser).start()
 
     uvicorn.run(
         "server:app",
-        host="127.0.0.1",
+        host="0.0.0.0",
         port=8000,
         reload=True
     )
