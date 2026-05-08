@@ -11,6 +11,12 @@ import torch
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
+import threading
+import webbrowser
+import time
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
+
 
 from config import cfg
 cfg.validate()
@@ -31,6 +37,16 @@ except ImportError:
 
 # ── App ───────────────────────────────────────────────────────────────────────
 app = FastAPI(title="CDVAE Crystal Generator", version="4.0")
+app.mount("/static", StaticFiles(directory="."), name="static")
+
+@app.get("/", response_class=FileResponse)
+async def home():
+    return FileResponse("login.html")
+
+@app.get("/index", response_class=FileResponse)
+async def index(username: str = Depends(get_current_user)):
+    return FileResponse("index.html")
+
 
 app.add_middleware(
     CORSMiddleware,
@@ -119,6 +135,29 @@ class SaveStructureRequest(BaseModel):
     elements:    list[str]
     temperature: float
     label:       Optional[str] = None
+
+from fastapi.responses import HTMLResponse
+import uvicorn
+
+@app.get("/", response_class=HTMLResponse)
+async def home():
+    return """
+    <h1>CDVAE Login Page</h1>
+    """
+
+def open_browser():
+    time.sleep(2)
+    webbrowser.open("http://127.0.0.1:8000")
+
+if __name__ == "__main__":
+    threading.Thread(target=open_browser).start()
+
+    uvicorn.run(
+        "server:app",
+        host="127.0.0.1",
+        port=8000,
+        reload=True
+    )
 
 # ══════════════════════════════════════════════════════════════════════════════
 #  AUTH ROUTES — public
