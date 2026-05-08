@@ -5,7 +5,7 @@ pandas
 matplotlib
 scikit-learn
 pyyaml
-traceback
+
 Pytorch-lightning
 omegaconf
 hydra-core
