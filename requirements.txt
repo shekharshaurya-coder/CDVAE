@@ -5,11 +5,13 @@ pandas
 matplotlib
 scikit-learn
 pyyaml
-
+traceback
 Pytorch-lightning
 omegaconf
 hydra-core
-
+UploadFile
+File
+Form
 pymatgen
 ase
 tqdm
