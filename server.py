@@ -41,7 +41,7 @@ app = FastAPI(title="CDVAE Crystal Generator", version="4.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=cfg.CORS_ORIGINS,
+    allow_origins=["*"],
     allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -49,6 +49,7 @@ app.add_middleware(
 
 # ── Static HTML routes ────────────────────────────────────────────────────────
 @app.get("/", response_class=FileResponse)
+@app.head("/")
 async def home():
     return FileResponse(BASE_DIR / "login.html")
 
