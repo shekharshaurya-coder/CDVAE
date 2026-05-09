@@ -205,7 +205,12 @@ async def me(username: str = Depends(get_current_user)):
 # ══════════════════════════════════════════════════════════════════════════════
 #  CRYSTAL ROUTES — protected
 # ══════════════════════════════════════════════════════════════════════════════
-
+@app.get("/collection.html",response_class=FileResponse)
+async def collection_page():
+    return FileResponse(BASE_DIR / "collection.html")
+@app.get("/cif_viewer.html",response_class=FileResponse)
+async def cif_viewer_page():
+    return FileResponse(BASE_DIR / "cif_viewer.html")
 @app.post("/generate", tags=["crystal"])
 def generate_api(req: GenerateRequest, username: str = Depends(get_current_user)):
     try:
