@@ -5,23 +5,19 @@ All config loaded from config.py (which reads .env)
 
 import math
 import traceback
-import requests                                      # FIX #1: was missing, needed in open_browser()
 from datetime import datetime, timezone
 from typing import Optional
 
 import torch
-from bson import ObjectId                            # FIX #3: was missing, needed in download_cif()
+from bson import ObjectId
 from fastapi import FastAPI, Depends, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse, PlainTextResponse, Response
 from pydantic import BaseModel, Field
 import pathlib
-import threading
-import webbrowser
-import time
 import uvicorn
 
-BASE_DIR = pathlib.Path(__file__).parent            # FIX: absolute path, always relative to server.py
+BASE_DIR = pathlib.Path(__file__).parent
 
 from config import cfg
 cfg.validate()
@@ -56,11 +52,23 @@ app.add_middleware(
 async def home():
     return FileResponse(BASE_DIR / "login.html")
 
-@app.get("/index", response_class=FileResponse)
-async def index(username: str = Depends(get_current_user)):
+@app.get("/login.html", response_class=FileResponse)
+async def login_page():
+    return FileResponse(BASE_DIR / "login.html")
+
+@app.get("/index.html", response_class=FileResponse)
+async def index_page():
     return FileResponse(BASE_DIR / "index.html")
 
-# ── MongoDB — URI comes from cfg, never hardcoded ─────────────────────────────
+@app.get("/collection.html", response_class=FileResponse)
+async def collection_page():
+    return FileResponse(BASE_DIR / "collection.html")
+
+@app.get("/cif_viewer.html", response_class=FileResponse)
+async def cif_viewer_page():
+    return FileResponse(BASE_DIR / "cif_viewer.html")
+
+# ── MongoDB ───────────────────────────────────────────────────────────────────
 _mongo_client = None
 
 def get_db():
@@ -71,7 +79,7 @@ def get_db():
         _mongo_client = AsyncIOMotorClient(cfg.MONGO_URI)
     return _mongo_client[cfg.MONGO_DB]
 
-# ── Load model — checkpoint path from cfg ────────────────────────────────────
+# ── Load model ────────────────────────────────────────────────────────────────
 device = "cuda" if torch.cuda.is_available() else "cpu"
 
 model = CDVAE(
@@ -140,26 +148,6 @@ class SaveStructureRequest(BaseModel):
     temperature: float
     label:       Optional[str] = None
 
-# ── Browser opener ────────────────────────────────────────────────────────────
-def open_browser():
-    time.sleep(2)
-    deployed_url = "https://crystalgen.onrender.com"
-    local_url    = "http://127.0.0.1:8000"
-    try:
-        response = requests.get(deployed_url, timeout=5)   # FIX #1: requests now imported
-        webbrowser.open(deployed_url if response.status_code == 200 else local_url)
-    except Exception:
-        webbrowser.open(local_url)
-
-if __name__ == "__main__":
-    threading.Thread(target=open_browser, daemon=True).start()
-    uvicorn.run(
-        "server:app",
-        host="0.0.0.0",
-        port=8000,
-        reload=False,                                       # FIX #5: reload=True breaks __file__ on some machines
-    )
-
 # ══════════════════════════════════════════════════════════════════════════════
 #  AUTH ROUTES — public
 # ══════════════════════════════════════════════════════════════════════════════
@@ -205,12 +193,7 @@ async def me(username: str = Depends(get_current_user)):
 # ══════════════════════════════════════════════════════════════════════════════
 #  CRYSTAL ROUTES — protected
 # ══════════════════════════════════════════════════════════════════════════════
-@app.get("/collection.html",response_class=FileResponse)
-async def collection_page():
-    return FileResponse(BASE_DIR / "collection.html")
-@app.get("/cif_viewer.html",response_class=FileResponse)
-async def cif_viewer_page():
-    return FileResponse(BASE_DIR / "cif_viewer.html")
+
 @app.post("/generate", tags=["crystal"])
 def generate_api(req: GenerateRequest, username: str = Depends(get_current_user)):
     try:
@@ -314,12 +297,11 @@ async def delete_structure(label: str, username: str = Depends(get_current_user)
 
 @app.get("/structures/{structure_id}/cif", response_class=PlainTextResponse, tags=["crystal"])
 async def download_cif(structure_id: str, username: str = Depends(get_current_user)):
-    db = get_db()                                          # FIX #2: db was never fetched here
+    db = get_db()
     if db is None:
         raise HTTPException(500, "Database not available")
-
     try:
-        oid = ObjectId(structure_id)                       # FIX #3: ObjectId now imported
+        oid = ObjectId(structure_id)
     except Exception:
         raise HTTPException(400, "Invalid structure ID format")
 
@@ -334,7 +316,7 @@ async def download_cif(structure_id: str, username: str = Depends(get_current_us
 
     a_vec, b_vec, c_vec = lattice
 
-    def vec_len(v):  return math.sqrt(sum(x**2 for x in v))
+    def vec_len(v):    return math.sqrt(sum(x**2 for x in v))
     def vec_dot(u, v): return sum(u[i]*v[i] for i in range(3))
 
     a = vec_len(a_vec); b = vec_len(b_vec); c = vec_len(c_vec)
@@ -377,3 +359,7 @@ async def download_cif(structure_id: str, username: str = Depends(get_current_us
         media_type="chemical/x-cif",
         headers={"Content-Disposition": f'attachment; filename="{safe_formula}_cdvae.cif"'}
     )
+
+# ── Entry point ───────────────────────────────────────────────────────────────
+if __name__ == "__main__":
+    uvicorn.run("server:app", host="0.0.0.0", port=8000, reload=False)

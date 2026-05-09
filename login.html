@@ -489,8 +489,8 @@ async function submitLogin() {
  
     localStorage.setItem('cdvae_token',    data.access_token);
     localStorage.setItem('cdvae_username', data.username);
-    showMsg('login-msg', `✓ Welcome back, ${data.username}! Redirecting…`, 'success');
-    setTimeout(() => { window.location.href = 'index.html'; }, 800);
+    showMsg('login-msg', `✓ Welcome back, ${data.username}! Redirecting you to the dashboard...`, 'Good Luck for generation !!');
+    setTimeout(() => { window.location.href = '/index.html'; }, 800);
  
   } catch (e) {
     showMsg('login-msg', '✗ ' + e.message, 'error');
@@ -545,7 +545,7 @@ async function submitRegister() {
   fetch(`${API}/me`, {
     headers: { 'Authorization': `Bearer ${token}` }
   }).then(r => {
-    if (r.ok) window.location.href = 'index.html';
+    if (r.ok) window.location.href = '/index.html';
   }).catch(() => {/* token invalid or server down — stay on login page */});
 })();
 </script>
