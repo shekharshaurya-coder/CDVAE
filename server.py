@@ -39,10 +39,13 @@ except ImportError:
 # ── App ───────────────────────────────────────────────────────────────────────
 app = FastAPI(title="CDVAE Crystal Generator", version="4.0")
 
+# ✅ Works whether it's a string or a list
+origins = cfg.CORS_ORIGINS if isinstance(cfg.CORS_ORIGINS, list) else cfg.CORS_ORIGINS.split(",")
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=cfg.CORS_ORIGINS.split(","),  # reads from env
-    allow_credentials=True,
+    allow_origins=origins,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
