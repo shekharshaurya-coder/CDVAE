@@ -1,0 +1,14 @@
+from huggingface_hub import login, upload_file
+login()
+
+
+from huggingface_hub import HfApi
+
+api = HfApi()
+
+api.upload_file(
+    path_or_fileobj="L:/aj_cdvae/aj051k/cdvae_checkpoint_epoch_110.pt",
+    path_in_repo="cdvae_checkpoint_epoch_110.pt",
+    repo_id="shekxyy/cdvae_checkpoint_epoch_110.pt",
+    repo_type="model",
+)

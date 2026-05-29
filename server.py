@@ -41,8 +41,8 @@ app = FastAPI(title="CDVAE Crystal Generator", version="4.0")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=False,
+    allow_origins=cfg.CORS_ORIGINS.split(","),  # reads from env
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )

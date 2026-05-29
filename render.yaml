@@ -1,0 +1,22 @@
+services:
+  - type: web
+    name: cdvae-app
+    runtime: python
+    buildCommand: pip install -r requirements.txt && python download_model.py
+    startCommand: uvicorn server:app --host 0.0.0.0 --port $PORT
+    plan: starter
+    envVars:
+      - key: MONGO_URI
+        sync: false
+      - key: MONGO_DB
+        value: cdvae
+      - key: JWT_SECRET
+        sync: false
+      - key: JWT_ALGORITHM
+        value: HS256
+      - key: JWT_EXPIRE_HOURS
+        value: 1
+      - key: CHECKPOINT_PATH
+        value: cdvae_checkpoint_epoch_110.pt
+      - key: CORS_ORIGINS
+        value: https://your-app-name.onrender.com
