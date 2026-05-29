@@ -732,7 +732,9 @@
 <div id="toast"></div>
 
 <script>
-const API = 'http://127.0.0.1:8000';
+const API = (window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost')
+  ? 'http://127.0.0.1:8000'
+  : window.location.origin;
 
 function gotoviewer()     { window.location.href = 'cif_viewer.html'; }
 function gotocollection() { window.location.href = 'collection.html'; }

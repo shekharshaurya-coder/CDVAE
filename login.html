@@ -385,7 +385,7 @@
 // FIX #4: Dynamic API URL — works on localhost AND on Render deployment
 const API = (window.location.hostname === '127.0.0.1' || window.location.hostname === 'localhost')
   ? 'http://127.0.0.1:8000'
-  : `${window.location.origin}`;
+  : window.location.origin;
  
 // ── Tab switching ─────────────────────────────────────────────────────────────
 function switchTab(tab) {
