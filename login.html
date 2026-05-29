@@ -489,7 +489,7 @@ async function submitLogin() {
  
     localStorage.setItem('cdvae_token',    data.access_token);
     localStorage.setItem('cdvae_username', data.username);
-    showMsg('login-msg', `✓ Welcome back, ${data.username}! Redirecting you to the dashboard...`, 'Good Luck for generation !!');
+    showMsg('login-msg', `✓ Welcome back, ${data.username}! Redirecting…`, 'success');
     setTimeout(() => { window.location.href = '/index.html'; }, 800);
  
   } catch (e) {
