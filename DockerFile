@@ -1,0 +1,23 @@
+FROM python:3.10-slim
+
+WORKDIR /app
+
+# Install system dependencies needed by torch, pymatgen, etc.
+RUN apt-get update && apt-get install -y \
+    gcc g++ git curl \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy and install Python dependencies first (better Docker cache)
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy all project files
+COPY . .
+
+# Download the model checkpoint from Hugging Face at build time
+RUN python download_model.py
+
+# Hugging Face Spaces requires port 7860
+EXPOSE 7860
+
+CMD ["uvicorn", "server:app", "--host", "0.0.0.0", "--port", "7860"]
